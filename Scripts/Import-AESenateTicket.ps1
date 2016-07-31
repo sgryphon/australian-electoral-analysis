@@ -36,9 +36,8 @@ Invoke-SqlCmd -ServerInstance $ServerInstance -Database $Database -Query $query
 $data = Get-Content $dataFile | Select -Skip 1 | ConvertFrom-Csv
 
 foreach ($row in $data) {
-    if ($row.BallotPosition -gt 9000) { continue; }
 	Write-Verbose "Importing ticket $($row.CandidateDetails) ($($row.PartyName))"
-	$query = "INSERT INTO [TicketRaw] (
+	$query = "INSERT INTO [RawSenateFirstPreferences] (
 		Election 	
 		,StateAb 
 		,Ticket 
@@ -70,18 +69,3 @@ foreach ($row in $data) {
 		);"
 	Invoke-SqlCmd -ServerInstance $ServerInstance -Database $Database -Query $query
 }
-
-$orderQuery = "UPDATE TicketRaw
-SET PreferencePosition = (SELECT p.Position FROM 
-		(SELECT Id, 
-			ROW_NUMBER() OVER(ORDER BY 
-			CASE WHEN BallotPosition = 0 THEN 0 ELSE 1 END, 
-			RIGHT('_'+Ticket,2), 
-			BallotPosition) AS Position 
-		FROM TicketDimension 
-		WHERE StateAb = t.StateAb AND Election='$($Election -replace "'", "''")') p 
-	WHERE p.Id = t.Id)
-FROM TicketRaw t
-WHERE Election='$($Election -replace "'", "''")';"
-
-Invoke-SqlCmd -ServerInstance $ServerInstance -Database $Database -Query $orderQuery
