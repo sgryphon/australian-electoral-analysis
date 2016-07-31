@@ -308,4 +308,45 @@ GO
 SELECT * FROM VoteFact
 */
 
+-- Too long (> 1 hr)
+INSERT INTO VoteFact (
+	ElectionId,
+	LocationId,
+	PreferenceId,
+	FirstPreferenceTicketId,
+	VoteCount
+)
+SELECT 
+	ElectionId,
+	LocationId,
+	PreferenceId,
+	(SELECT TOP 1 TicketId 
+		FROM PreferenceFact f 
+		WHERE f.PreferenceId = x.PreferenceId AND f.PreferenceNumber = 1) AS FirstPreferenceTicketId,
+	VoteCount
+FROM
+	(SELECT
+		(SELECT TOP 1 ElectionId 
+			FROM ElectionDimension e 
+			WHERE e.Election = c.Election
+			) AS ElectionId,
+		(SELECT TOP 1 LocationId 
+			FROM LocationDimension l 
+			WHERE l.[State] = c.StateAb 
+				AND l.Division = c.ElectorateNm 
+				AND l.VoteCollectionPoint = c.VoteCollectionPointNm
+			) AS LocationId,
+		(SELECT TOP 1 PreferenceId
+			FROM PreferenceDimension p
+			WHERE p.Election = c.Election 
+				AND p.Electorate = c.StateAb 
+				AND p.Preferences = c.Preferences
+			) AS PreferenceId,
+		VoteCount
+	FROM (SELECT Election, StateAb, Preferences, ElectorateNm, VoteCollectionPointNm, COUNT(*) AS VoteCount
+		FROM (SELECT Election, StateAb, Preferences, ElectorateNm, VoteCollectionPointNm 
+			FROM RawSenateFormalPreferences WHERE Processed = 0) r
+		GROUP BY Election, StateAb, Preferences, ElectorateNm, VoteCollectionPointNm) c
+	) x
+WHERE PreferenceId IN (SELECT PreferenceId FROM PreferenceFact WHERE PreferenceNumber = 1);
 
