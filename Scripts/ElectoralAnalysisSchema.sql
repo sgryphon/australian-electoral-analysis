@@ -5,6 +5,7 @@ DROP TABLE [dbo].[VoteFact];
 DROP TABLE [dbo].[LocationDimension];
 DROP TABLE [dbo].[PreferenceDimension];
 DROP TABLE [dbo].[TicketDimension];
+
 DROP TABLE [dbo].[ElectionDimension];
 */
 /*
@@ -61,6 +62,25 @@ CREATE UNIQUE NONCLUSTERED INDEX UQ_PartyLookup_PartyName ON dbo.PartyLookup
 	);
 GO
 
+CREATE TABLE [dbo].[SenateFormalPreferencesCount] (
+	[Id] [int] IDENTITY(1,1) NOT NULL,
+		CONSTRAINT [PK_SenateFormalPreferencesCount] PRIMARY KEY CLUSTERED ([Id]),
+	[Election] [nvarchar](50) NULL,
+	[StateAb] [nvarchar](3) NULL,
+	[ElectorateNm] [nvarchar](100) NULL,
+	[VoteCollectionPointNm] [nvarchar](200) NULL,
+	[Preferences] [nvarchar](1000) NULL,
+	[VoteCount] [int] NOT NULL,
+	[ElectionId] [int] NULL,
+	[LocationId] [int] NULL,
+	[PreferenceId] [int] NULL,
+	[FirstPreferenceTicketId] [int] NULL,
+	[Processed] [bit] NOT NULL DEFAULT(0)
+);
+GO
+
+-- Dimensions
+
 CREATE TABLE [dbo].[ElectionDimension] (
 	[ElectionId] [int] IDENTITY(1,1) NOT NULL,
 		CONSTRAINT [PK_ElectionDimension] PRIMARY KEY CLUSTERED ([ElectionId]),
@@ -81,19 +101,6 @@ CREATE TABLE [dbo].[LocationDimension] (
 );
 GO
 
-CREATE TABLE [dbo].[PreferenceDimension] (
-	[PreferenceId] [int] IDENTITY(1,1) NOT NULL,
-		CONSTRAINT [PK_PreferenceDimension] PRIMARY KEY CLUSTERED ([PreferenceId]),
-	[Election] [nvarchar](50) NOT NULL,
-	[House] [nvarchar](20) NOT NULL,
-	[Electorate] [nvarchar](100) NOT NULL,
-	[Preferences] [nvarchar](1000) NOT NULL,
-	[PreferenceType] [nvarchar](10) NOT NULL,
-	[PreferenceList] [nvarchar](1000) NOT NULL,
-	[HowToVote] [nvarchar](3) NOT NULL
-);
-GO
-
 CREATE TABLE [dbo].[TicketDimension] (
 	[TicketId] [int] IDENTITY(1,1) NOT NULL,
 		CONSTRAINT [PK_TicketDimension] PRIMARY KEY CLUSTERED ([TicketId]),
@@ -107,6 +114,19 @@ CREATE TABLE [dbo].[TicketDimension] (
 	[PartyKey] [nchar](4) NOT NULL,
 	[PartyShort] [nvarchar](8) NOT NULL,
 	[PreferencePosition] [smallint] NOT NULL
+);
+GO
+
+CREATE TABLE [dbo].[PreferenceDimension] (
+	[PreferenceId] [int] IDENTITY(1,1) NOT NULL,
+		CONSTRAINT [PK_PreferenceDimension] PRIMARY KEY CLUSTERED ([PreferenceId]),
+	[Election] [nvarchar](50) NOT NULL,
+	[House] [nvarchar](20) NOT NULL,
+	[Electorate] [nvarchar](100) NOT NULL,
+	[Preferences] [nvarchar](1000) NOT NULL,
+	[PreferenceType] [nvarchar](10) NOT NULL, -- BTL, ATL, Invalid
+	[PreferenceList] [nvarchar](1000) NOT NULL,
+	[HowToVote] [nvarchar](3) NOT NULL,
 );
 GO
 
