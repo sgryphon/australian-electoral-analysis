@@ -88,6 +88,7 @@ CREATE TABLE [dbo].[PreferenceDimension] (
 	[House] [nvarchar](20) NOT NULL,
 	[Electorate] [nvarchar](100) NOT NULL,
 	[Preferences] [nvarchar](1000) NOT NULL,
+	[PreferenceType] [nvarchar](10) NOT NULL,
 	[PreferenceList] [nvarchar](1000) NOT NULL,
 	[HowToVote] [nvarchar](3) NOT NULL
 );

@@ -191,6 +191,9 @@ FROM RawSenateFirstPreferences r
 	LEFT JOIN PartyLookup l ON r.PartyName = l.PartyName
 WHERE BallotPosition < 9000 AND Processed = 0;
  
+/*
+SELECT * FROM LocationDimension
+*/
 
 INSERT INTO LocationDimension (
 	[State], 
@@ -224,5 +227,30 @@ LEFT JOIN LocationDimension l
 		AND r.VoteCollectionPoint = l.VoteCollectionPoint
 WHERE l.LocationId IS NULL;
 
+/*
+SELECT * FROM PreferenceDimension
+*/
 
-
+INSERT INTO PreferenceDimension (
+	Election,
+	House,
+	Electorate,
+	Preferences,
+	PreferenceType,
+	PreferenceList,
+	HowToVote
+)
+SELECT 
+	Election,
+	'Senate' AS House,
+	Electorate,
+	Preferences,
+	'' AS PreferenceType,
+	'' AS PreferenceList,
+	'' AS HowToVote
+FROM (SELECT DISTINCT 
+		Election,
+		StateAb AS Electorate,
+		Preferences
+	FROM RawSenateFormalPreferences
+	WHERE Processed = 0) r;
