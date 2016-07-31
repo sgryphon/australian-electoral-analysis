@@ -117,12 +117,11 @@ CREATE TABLE [dbo].[PreferenceFact](
 	[PreferenceId] [int] NOT NULL,
 		CONSTRAINT [FK_PreferenceFact_PreferenceDimension] FOREIGN KEY([PreferenceId])
 			REFERENCES [dbo].[PreferenceDimension] ([PreferenceId]),
-	[PreferenceNumber] [smallint] NOT NULL,
 	[TicketId] [int] NOT NULL,
 		CONSTRAINT [FK_PreferenceFact_TicketDimension] FOREIGN KEY([TicketId])
 			REFERENCES [dbo].[TicketDimension] ([TicketId]),
-		CONSTRAINT [PK_PreferenceFact] PRIMARY KEY CLUSTERED ([ElectionId], [PreferenceId], [PreferenceNumber]),
-	[Count] [int] NOT NULL
+		CONSTRAINT [PK_PreferenceFact] PRIMARY KEY CLUSTERED ([ElectionId], [PreferenceId], [TicketId]),
+	[PreferenceNumber] [smallint] NOT NULL
 );
 GO
 

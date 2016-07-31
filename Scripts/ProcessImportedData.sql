@@ -254,3 +254,58 @@ FROM (SELECT DISTINCT
 		Preferences
 	FROM RawSenateFormalPreferences
 	WHERE Processed = 0) r;
+GO
+
+/*
+SELECT * FROM PreferenceFact
+*/
+
+INSERT INTO PreferenceFact (
+	ElectionId,
+	PreferenceId,
+	PreferenceNumber,
+	TicketId
+)
+SELECT 
+	ElectionId,
+	p.PreferenceId, 
+	CASE 
+		WHEN PreferenceValue = '*' THEN -1
+		WHEN PreferenceValue = '/' THEN -2
+		WHEN PreferenceValue = '' THEN -3
+		ELSE CONVERT(smallint, PreferenceValue)
+	END PreferenceNumber, 
+	TicketId 
+	-- ,1 AS [Count]
+	-- ,t.PreferencePosition
+FROM (SELECT
+		PreferenceId, 
+		ROW_NUMBER() OVER (PARTITION BY PreferenceId ORDER BY LEN(PreferenceRight) DESC) AS PreferencePosition,
+		LEFT(PreferenceRight, CHARINDEX(',', PreferenceRight + ',') - 1) AS PreferenceValue,
+		PreferenceRight
+	FROM
+		(SELECT PreferenceId, LTRIM(SUBSTRING(p.Preferences, n.Number, 1000)) AS PreferenceRight
+			FROM 
+				(SELECT PreferenceId, Preferences 
+					FROM PreferenceDimension
+					WHERE PreferenceId NOT IN (SELECT PreferenceId FROM PreferenceFact)) p
+			LEFT OUTER JOIN
+				(SELECT DISTINCT number FROM master.dbo.spt_values WHERE number BETWEEN 1 AND 1000) n
+					ON n.Number <= LEN(',' + p.Preferences) AND SUBSTRING(',' + p.Preferences, n.Number, 1) = ',') x
+) y
+	JOIN PreferenceDimension p 
+		ON p.PreferenceId = y.PreferenceId
+	JOIN ElectionDimension e
+		ON e.Election = p.Election
+	JOIN TicketDimension t
+		ON t.Election = p.Election AND t.Electorate = p.Electorate AND t.PreferencePosition = y.PreferencePosition
+WHERE PreferenceValue <> '' AND PreferenceValue NOT LIKE '[*/]';
+--ORDER BY p.PreferenceId, PreferencePosition;
+GO
+
+
+/*
+SELECT * FROM VoteFact
+*/
+
+
