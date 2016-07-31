@@ -6,7 +6,8 @@ DROP TABLE [dbo].[LocationDimension];
 DROP TABLE [dbo].[PreferenceDimension];
 DROP TABLE [dbo].[TicketDimension];
 DROP TABLE [dbo].[ElectionDimension];
-
+*/
+/*
 DROP TABLE [dbo].[PartyLookup]
 */
 
@@ -75,7 +76,8 @@ CREATE TABLE [dbo].[LocationDimension] (
 		CONSTRAINT [PK_LocationDimension] PRIMARY KEY CLUSTERED ([LocationId]),
 	[State] [nvarchar](3) NOT NULL,
 	[Division] [nvarchar](100) NOT NULL,
-	[VoteCollectionPoint] [nvarchar](200) NOT NULL
+	[VoteCollectionPoint] [nvarchar](200) NOT NULL,
+	[LocationType] [nvarchar](20) NOT NULL
 );
 GO
 

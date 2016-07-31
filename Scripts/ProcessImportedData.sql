@@ -192,4 +192,37 @@ FROM RawSenateFirstPreferences r
 WHERE BallotPosition < 9000 AND Processed = 0;
  
 
+INSERT INTO LocationDimension (
+	[State], 
+	Division, 
+	VoteCollectionPoint,
+	LocationType
+)
+SELECT 
+	r.[State], 
+	r.Division, 
+	r.VoteCollectionPoint,
+	CASE 
+		WHEN r.VoteCollectionPoint LIKE 'ABSENT %' THEN 'Absent'
+		WHEN r.VoteCollectionPoint LIKE 'POSTAL %' THEN 'Postal'
+		WHEN r.VoteCollectionPoint LIKE 'PRE_POLL %' THEN 'PrePoll'
+		WHEN r.VoteCollectionPoint LIKE 'PROVISIONAL %' THEN 'Provisional'
+		WHEN r.VoteCollectionPoint LIKE 'Special Hospital Team %' THEN 'Special'
+		WHEN r.VoteCollectionPoint LIKE '%PPVC%' THEN 'PrePoll'
+		WHEN r.VoteCollectionPoint LIKE '%(PREPOLL)%' THEN 'PrePoll'
+		ELSE 'Ordinary'
+	END AS LocationType
+FROM (SELECT DISTINCT 
+		StateAb AS [State], 
+		ElectorateNm AS Division, 
+		VoteCollectionPointNm AS VoteCollectionPoint
+	FROM RawSenateFormalPreferences
+	WHERE Processed = 0) r
+LEFT JOIN LocationDimension l 
+	ON r.[State] = l.[State] 
+		AND r.Division = l.Division
+		AND r.VoteCollectionPoint = l.VoteCollectionPoint
+WHERE l.LocationId IS NULL;
+
+
 
