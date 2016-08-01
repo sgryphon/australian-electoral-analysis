@@ -407,56 +407,92 @@ WHERE PreferenceValue <> '' AND PreferenceValue NOT LIKE '[*/]';
 --ORDER BY p.PreferenceId, PreferencePosition;
 GO
 
--- Check highest BTL sequence
--- Takes too long (> 5 min)
-UPDATE PreferenceDimension
-SET HighestBtlPreference = (NextNumberAfterHighestPreference - 1)
-FROM PreferenceDimension p
-JOIN (SELECT ElectionId, PreferenceId, MIN(Number) AS NextNumberAfterHighestPreference
-	FROM (SELECT ElectionId, PreferenceId, Number, COUNT(PreferenceNumber) AS PreferencesBelowNumber
-		FROM
-			(SELECT ElectionId, s.PreferenceId, s.TicketId, PreferenceNumber, p.Preferences
-				FROM PreferenceStaging s
-					JOIN TicketDimension t ON t.TicketId = s.TicketId
-					JOIN PreferenceDimension p ON p.PreferenceId = s.PreferenceId
-				WHERE BallotPosition > 0 AND PreferenceType = '' 
-					--AND p.PreferenceId BETWEEN 5 AND 9
-					) x
-			JOIN
-				(SELECT DISTINCT number FROM master.dbo.spt_values WHERE number BETWEEN 1 AND 500) n
-					ON x.PreferenceNumber <= n.Number
-		GROUP BY ElectionId, PreferenceId, Number
-		HAVING Number <> COUNT(PreferenceNumber)
-	) y
-GROUP BY ElectionId, PreferenceId
-) z ON p.PreferenceId = z.PreferenceId;
-GO
+-- Check highest BTL sequence (TAS ~ 3 min)
 
 UPDATE PreferenceDimension
-SET HighestBtlPreference = (NextNumberAfterHighestPreference - 1)
-FROM PreferenceDimension p
-JOIN (SELECT ElectionId, PreferenceId, MIN(Number) AS NextNumberAfterHighestPreference
-	FROM (SELECT ElectionId, PreferenceId, Number, COUNT(PreferenceNumber) AS PreferencesBelowNumber
-		FROM
-			(SELECT ElectionId, s.PreferenceId, s.TicketId, PreferenceNumber, p.Preferences
-				FROM PreferenceStaging s
-					JOIN TicketDimension t ON t.TicketId = s.TicketId
-					JOIN PreferenceDimension p ON p.PreferenceId = s.PreferenceId
-				WHERE BallotPosition = 0 AND PreferenceType = '' 
-					--AND p.PreferenceId BETWEEN 5 AND 9
-					) x
-			JOIN
-				(SELECT DISTINCT number FROM master.dbo.spt_values WHERE number BETWEEN 1 AND 500) n
-					ON x.PreferenceNumber <= n.Number
-		GROUP BY ElectionId, PreferenceId, Number
-		HAVING Number <> COUNT(PreferenceNumber)
-	) y
-GROUP BY ElectionId, PreferenceId
-) z ON p.PreferenceId = z.PreferenceId;
+SET HighestBtlPreference = 0
+WHERE PreferenceType = '';
 GO
 
+DECLARE @counter INT;
+DECLARE @max INT;
+DECLARE @updatedRows INT;
+SET @counter = 1;
+SET @updatedRows = -1;
+SET @max = (SELECT MAX(PreferencePosition) FROM TicketDimension);
+PRINT 'Max preferences: ' + CONVERT(nvarchar(5), @max);
+WHILE ( (@counter <= @max + 1) AND (@updatedRows <> 0 ) BEGIN
+	PRINT 'Processing ' + CONVERT(varchar(5), @counter);
+
+	UPDATE PreferenceDimension
+	SET HighestBtlPreference = HighestBtlPreference + 1
+	FROM PreferenceDimension p
+	JOIN (SELECT p1.Election, p1.PreferenceId, COUNT(TicketId) AS HowMany
+		FROM PreferenceDimension p1
+		JOIN (SELECT Election, PreferenceId, PreferenceNumber, s.TicketId 
+				FROM PreferenceStaging s
+				JOIN TicketDimension t ON s.TicketId = t.TicketId
+				WHERE t.BallotPosition > 0
+			) x ON p1.Election = x.Election AND p1.PreferenceId = x.PreferenceId
+		WHERE x.PreferenceNumber = (p1.HighestBtlPreference + 1)
+		GROUP BY p1.Election, p1.PreferenceId
+		HAVING COUNT(TicketId) = 1
+	) y ON p.Election = y.Election AND p.PreferenceId = y.PreferenceId;
+
+	SET @updatedRows = (SELECT @@ROWCOUNT);
+
+	SET @counter = @counter + 1;
+END
+GO
 
 -- Check highest ATL sequence
+
+UPDATE PreferenceDimension
+SET HighestAtlPreference = 0
+WHERE PreferenceType = '';
+GO
+
+DECLARE @counter INT;
+DECLARE @max INT;
+DECLARE @updatedRows INT;
+SET @counter = 1;
+SET @updatedRows = -1;
+SET @max = (SELECT MAX(PreferencePosition) FROM TicketDimension);
+PRINT 'Max preferences: ' + CONVERT(nvarchar(5), @max);
+WHILE ( (@counter <= @max + 1) AND (@updatedRows <> 0) ) BEGIN
+	PRINT 'Processing ' + CONVERT(varchar(5), @counter);
+
+	UPDATE PreferenceDimension
+	SET HighestAtlPreference = HighestAtlPreference + 1
+	FROM PreferenceDimension p
+	JOIN (SELECT p1.Election, p1.PreferenceId, COUNT(TicketId) AS HowMany
+		FROM PreferenceDimension p1
+		JOIN (SELECT Election, PreferenceId, PreferenceNumber, s.TicketId 
+				FROM PreferenceStaging s
+				JOIN TicketDimension t ON s.TicketId = t.TicketId
+				WHERE t.BallotPosition = 0
+			) x ON p1.Election = x.Election AND p1.PreferenceId = x.PreferenceId
+		WHERE x.PreferenceNumber = (p1.HighestAtlPreference + 1)
+		GROUP BY p1.Election, p1.PreferenceId
+		HAVING COUNT(TicketId) = 1
+	) y ON p.Election = y.Election AND p.PreferenceId = y.PreferenceId;
+
+	SET @updatedRows = (SELECT @@ROWCOUNT);
+
+	SET @counter = @counter + 1;
+END
+GO
+
+-- Set preference type
+
+UPDATE PreferenceDimension
+SET PreferenceType = CASE
+		WHEN HighestBtlPreference >= 6 THEN 'BTL'
+		WHEN HighestAtlPreference >= 1 THEN 'ATL'
+		ELSE 'Informal'
+	END
+WHERE PreferenceType = '';
+GO
 
 -- Transfer
 
