@@ -432,7 +432,7 @@ WHILE ( (@counter <= @max + 1) AND (@updatedRows <> 0 ) BEGIN
 		JOIN (SELECT Election, PreferenceId, PreferenceNumber, s.TicketId 
 				FROM PreferenceStaging s
 				JOIN TicketDimension t ON s.TicketId = t.TicketId
-				WHERE t.BallotPosition > 0
+				WHERE Processed = 0 AND t.BallotPosition > 0
 			) x ON p1.Election = x.Election AND p1.PreferenceId = x.PreferenceId
 		WHERE x.PreferenceNumber = (p1.HighestBtlPreference + 1)
 		GROUP BY p1.Election, p1.PreferenceId
@@ -470,7 +470,7 @@ WHILE ( (@counter <= @max + 1) AND (@updatedRows <> 0) ) BEGIN
 		JOIN (SELECT Election, PreferenceId, PreferenceNumber, s.TicketId 
 				FROM PreferenceStaging s
 				JOIN TicketDimension t ON s.TicketId = t.TicketId
-				WHERE t.BallotPosition = 0
+				WHERE Processed = 0 AND t.BallotPosition = 0
 			) x ON p1.Election = x.Election AND p1.PreferenceId = x.PreferenceId
 		WHERE x.PreferenceNumber = (p1.HighestAtlPreference + 1)
 		GROUP BY p1.Election, p1.PreferenceId
@@ -494,14 +494,54 @@ SET PreferenceType = CASE
 WHERE PreferenceType = '';
 GO
 
--- Transfer
+/*
+SELECT * FROM PreferenceFact
+*/
 
+-- Transfer BTL
+
+INSERT INTO PreferenceFact
+	(ElectionId, PreferenceId, TicketId, PreferenceNumber)
+SELECT ElectionId, s.PreferenceId, s.TicketId, PreferenceNumber
+FROM PreferenceStaging s
+JOIN PreferenceDimension p ON s.PreferenceId = p.PreferenceId
+JOIN TicketDimension t ON s.TicketId = t.TicketId
+WHERE Processed = 0
+	AND PreferenceType = 'BTL' 
+	AND BallotPosition > 0
+	AND PreferenceNumber <= HighestBtlPreference;
+GO
+
+-- Transfer ATL
+
+INSERT INTO PreferenceFact
+	(ElectionId, PreferenceId, TicketId, PreferenceNumber)
+SELECT ElectionId, s.PreferenceId, s.TicketId, PreferenceNumber
+FROM PreferenceStaging s
+JOIN PreferenceDimension p ON s.PreferenceId = p.PreferenceId
+JOIN TicketDimension t ON s.TicketId = t.TicketId
+WHERE Processed = 0
+	AND PreferenceType = 'ATL' 
+	AND BallotPosition = 0
+	AND PreferenceNumber <= HighestAtlPreference;
+GO
 
 /*
 SELECT * FROM VoteFact
 */
 
--- Too long (> 1 hr)
+UPDATE VoteStaging
+SET FirstPreferenceTicketId = COALESCE( x.FirstPreferenceTicketId, (SELECT TicketId FROM TicketDimension WHERE Ticket = 'NA'))
+FROM VoteStaging s
+	JOIN (SELECT s1.PreferenceId, TicketId AS FirstPreferenceTicketId 
+		FROM VoteStaging s1
+		LEFT JOIN PreferenceFact p ON s1.PreferenceId = p.PreferenceId AND PreferenceNumber = 1
+		WHERE Processed = 0
+	) x ON s.PreferenceId = x.PreferenceId;
+GO
+
+-- Transfer
+
 INSERT INTO VoteFact (
 	ElectionId,
 	LocationId,
@@ -513,33 +553,9 @@ SELECT
 	ElectionId,
 	LocationId,
 	PreferenceId,
-	(SELECT TOP 1 TicketId 
-		FROM PreferenceFact f 
-		WHERE f.PreferenceId = x.PreferenceId AND f.PreferenceNumber = 1) AS FirstPreferenceTicketId,
+	FirstPreferenceTicketId,
 	VoteCount
-FROM
-	(SELECT
-		(SELECT TOP 1 ElectionId 
-			FROM ElectionDimension e 
-			WHERE e.Election = c.Election
-			) AS ElectionId,
-		(SELECT TOP 1 LocationId 
-			FROM LocationDimension l 
-			WHERE l.[State] = c.StateAb 
-				AND l.Division = c.ElectorateNm 
-				AND l.VoteCollectionPoint = c.VoteCollectionPointNm
-			) AS LocationId,
-		(SELECT TOP 1 PreferenceId
-			FROM PreferenceDimension p
-			WHERE p.Election = c.Election 
-				AND p.Electorate = c.StateAb 
-				AND p.Preferences = c.Preferences
-			) AS PreferenceId,
-		VoteCount
-	FROM (SELECT Election, StateAb, Preferences, ElectorateNm, VoteCollectionPointNm, COUNT(*) AS VoteCount
-		FROM (SELECT Election, StateAb, Preferences, ElectorateNm, VoteCollectionPointNm 
-			FROM RawSenateFormalPreferences WHERE Processed = 0) r
-		GROUP BY Election, StateAb, Preferences, ElectorateNm, VoteCollectionPointNm) c
-	) x
-WHERE PreferenceId IN (SELECT PreferenceId FROM PreferenceFact WHERE PreferenceNumber = 1);
-
+FROM VoteStaging
+WHERE Processed = 0;
+GO
+	

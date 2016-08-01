@@ -66,7 +66,8 @@ CREATE TABLE [dbo].[PreferenceStaging](
 	[ElectionId] [int] NOT NULL,
 	[PreferenceId] [int] NOT NULL,
 	[TicketId] [int] NOT NULL,
-	[PreferenceNumber] [smallint] NOT NULL
+	[PreferenceNumber] [smallint] NOT NULL,
+	[Processed] [bit] NOT NULL DEFAULT(0)
 );
 GO
 
