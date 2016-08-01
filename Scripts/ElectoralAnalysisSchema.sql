@@ -62,7 +62,15 @@ CREATE UNIQUE NONCLUSTERED INDEX UQ_PartyLookup_PartyName ON dbo.PartyLookup
 	);
 GO
 
-CREATE TABLE [dbo].[SenateFormalPreferencesCount] (
+CREATE TABLE [dbo].[PreferenceStaging](
+	[ElectionId] [int] NOT NULL,
+	[PreferenceId] [int] NOT NULL,
+	[TicketId] [int] NOT NULL,
+	[PreferenceNumber] [smallint] NOT NULL
+);
+GO
+
+CREATE TABLE [dbo].[VoteStaging] (
 	[Id] [int] IDENTITY(1,1) NOT NULL,
 		CONSTRAINT [PK_SenateFormalPreferencesCount] PRIMARY KEY CLUSTERED ([Id]),
 	[Election] [nvarchar](50) NULL,
@@ -125,6 +133,8 @@ CREATE TABLE [dbo].[PreferenceDimension] (
 	[Electorate] [nvarchar](100) NOT NULL,
 	[Preferences] [nvarchar](1000) NOT NULL,
 	[PreferenceType] [nvarchar](10) NOT NULL, -- BTL, ATL, Invalid
+	[HighestAtlPreference] [int] NULL,
+	[HighestBtlPreference] [int] NULL,
 	[PreferenceList] [nvarchar](1000) NOT NULL,
 	[HowToVote] [nvarchar](3) NOT NULL,
 );
@@ -140,8 +150,8 @@ CREATE TABLE [dbo].[PreferenceFact](
 	[TicketId] [int] NOT NULL,
 		CONSTRAINT [FK_PreferenceFact_TicketDimension] FOREIGN KEY([TicketId])
 			REFERENCES [dbo].[TicketDimension] ([TicketId]),
-		CONSTRAINT [PK_PreferenceFact] PRIMARY KEY CLUSTERED ([ElectionId], [PreferenceId], [TicketId]),
-	[PreferenceNumber] [smallint] NOT NULL
+	[PreferenceNumber] [smallint] NOT NULL,
+		CONSTRAINT [PK_PreferenceFact] PRIMARY KEY CLUSTERED ([ElectionId], [PreferenceId], PreferenceNumber)
 );
 GO
 

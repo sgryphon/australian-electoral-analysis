@@ -170,10 +170,10 @@ FROM (SELECT DISTINCT PartyName
 */
 
 /*
-SELECT * FROM [SenateFormalPreferencesCount]
+SELECT * FROM [VoteStaging]
 */
 
-INSERT INTO [SenateFormalPreferencesCount] (
+INSERT INTO [VoteStaging] (
 	Election, 
 	StateAb, 
 	ElectorateNm, 
@@ -193,9 +193,9 @@ SELECT
 	GROUP BY Election, StateAb, Preferences, ElectorateNm, VoteCollectionPointNm;
 GO
 
-UPDATE [SenateFormalPreferencesCount]
+UPDATE [VoteStaging]
 	SET ElectionId = e.ElectionId
-	FROM [SenateFormalPreferencesCount] c
+	FROM [VoteStaging] c
 	JOIN ElectionDimension e ON e.Election = c.Election;
 
 /*
@@ -306,7 +306,7 @@ FROM (SELECT DISTINCT
 		StateAb AS [State], 
 		ElectorateNm AS Division, 
 		VoteCollectionPointNm AS VoteCollectionPoint
-	FROM [SenateFormalPreferencesCount]
+	FROM [VoteStaging]
 	WHERE Processed = 0) c
 LEFT JOIN LocationDimension l 
 	ON c.[State] = l.[State] 
@@ -314,9 +314,9 @@ LEFT JOIN LocationDimension l
 		AND c.VoteCollectionPoint = l.VoteCollectionPoint
 WHERE l.LocationId IS NULL;
 
-UPDATE [SenateFormalPreferencesCount]
+UPDATE [VoteStaging]
 	SET LocationId = l.LocationId
-	FROM [SenateFormalPreferencesCount] c
+	FROM [VoteStaging] c
 	JOIN LocationDimension l 
 	ON c.[StateAb] = l.[State] 
 		AND c.ElectorateNm = l.Division
@@ -347,24 +347,24 @@ FROM (SELECT DISTINCT
 		Election,
 		StateAb AS Electorate,
 		Preferences
-	FROM [SenateFormalPreferencesCount]
+	FROM [VoteStaging]
 	WHERE Processed = 0) c;
 GO
 
-UPDATE [SenateFormalPreferencesCount]
+UPDATE [VoteStaging]
 	SET PreferenceId = p.PreferenceId
-	FROM [SenateFormalPreferencesCount] c
+	FROM [VoteStaging] c
 	JOIN PreferenceDimension p 
 	ON c.Election = p.Election
 		AND c.[StateAb] = p.Electorate
 		AND c.Preferences = p.Preferences;
 
 /*
-SELECT * FROM PreferenceFact
+SELECT * FROM PreferenceStaging
 */
 
--- TAS ~ 1 min
-INSERT INTO PreferenceFact (
+-- Split preferences at commas, match to ticket based on index, take individual numbers (TAS ~ 1 min)
+INSERT INTO PreferenceStaging (
 	ElectionId,
 	PreferenceId,
 	PreferenceNumber,
@@ -406,6 +406,59 @@ FROM (SELECT
 WHERE PreferenceValue <> '' AND PreferenceValue NOT LIKE '[*/]';
 --ORDER BY p.PreferenceId, PreferencePosition;
 GO
+
+-- Check highest BTL sequence
+-- Takes too long (> 5 min)
+UPDATE PreferenceDimension
+SET HighestBtlPreference = (NextNumberAfterHighestPreference - 1)
+FROM PreferenceDimension p
+JOIN (SELECT ElectionId, PreferenceId, MIN(Number) AS NextNumberAfterHighestPreference
+	FROM (SELECT ElectionId, PreferenceId, Number, COUNT(PreferenceNumber) AS PreferencesBelowNumber
+		FROM
+			(SELECT ElectionId, s.PreferenceId, s.TicketId, PreferenceNumber, p.Preferences
+				FROM PreferenceStaging s
+					JOIN TicketDimension t ON t.TicketId = s.TicketId
+					JOIN PreferenceDimension p ON p.PreferenceId = s.PreferenceId
+				WHERE BallotPosition > 0 AND PreferenceType = '' 
+					--AND p.PreferenceId BETWEEN 5 AND 9
+					) x
+			JOIN
+				(SELECT DISTINCT number FROM master.dbo.spt_values WHERE number BETWEEN 1 AND 500) n
+					ON x.PreferenceNumber <= n.Number
+		GROUP BY ElectionId, PreferenceId, Number
+		HAVING Number <> COUNT(PreferenceNumber)
+	) y
+GROUP BY ElectionId, PreferenceId
+) z ON p.PreferenceId = z.PreferenceId;
+GO
+
+UPDATE PreferenceDimension
+SET HighestBtlPreference = (NextNumberAfterHighestPreference - 1)
+FROM PreferenceDimension p
+JOIN (SELECT ElectionId, PreferenceId, MIN(Number) AS NextNumberAfterHighestPreference
+	FROM (SELECT ElectionId, PreferenceId, Number, COUNT(PreferenceNumber) AS PreferencesBelowNumber
+		FROM
+			(SELECT ElectionId, s.PreferenceId, s.TicketId, PreferenceNumber, p.Preferences
+				FROM PreferenceStaging s
+					JOIN TicketDimension t ON t.TicketId = s.TicketId
+					JOIN PreferenceDimension p ON p.PreferenceId = s.PreferenceId
+				WHERE BallotPosition = 0 AND PreferenceType = '' 
+					--AND p.PreferenceId BETWEEN 5 AND 9
+					) x
+			JOIN
+				(SELECT DISTINCT number FROM master.dbo.spt_values WHERE number BETWEEN 1 AND 500) n
+					ON x.PreferenceNumber <= n.Number
+		GROUP BY ElectionId, PreferenceId, Number
+		HAVING Number <> COUNT(PreferenceNumber)
+	) y
+GROUP BY ElectionId, PreferenceId
+) z ON p.PreferenceId = z.PreferenceId;
+GO
+
+
+-- Check highest ATL sequence
+
+-- Transfer
 
 
 /*
