@@ -297,9 +297,9 @@ SELECT
 		WHEN c.VoteCollectionPoint LIKE 'POSTAL %' THEN 'Postal'
 		WHEN c.VoteCollectionPoint LIKE 'PRE_POLL %' THEN 'PrePoll'
 		WHEN c.VoteCollectionPoint LIKE 'PROVISIONAL %' THEN 'Provisional'
-		WHEN c.VoteCollectionPoint LIKE 'Special Hospital Team %' THEN 'Special'
-		WHEN c.VoteCollectionPoint LIKE '%PPVC%' THEN 'PrePoll'
-		WHEN c.VoteCollectionPoint LIKE '%(PREPOLL)%' THEN 'PrePoll'
+		WHEN c.VoteCollectionPoint LIKE 'Special Hospital Team %' THEN 'Ord Special'
+		WHEN c.VoteCollectionPoint LIKE '%PPVC%' THEN 'Ord PPVC'
+		WHEN c.VoteCollectionPoint LIKE '%(PREPOLL)%' THEN 'Ord PrePoll'
 		ELSE 'Ordinary'
 	END AS LocationType
 FROM (SELECT DISTINCT 
