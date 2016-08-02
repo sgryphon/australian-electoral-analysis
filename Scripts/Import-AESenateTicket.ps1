@@ -29,7 +29,7 @@ $commonParameters = @{
 $dataFile = Join-Path $scriptRoot $FilePath
 
 <#
-$query = "BULK INSERT [SenateFirstPrefsRaw] FROM '$dataFile' WITH ( FIELDTERMINATOR = ',', FIRSTROW = 3 );"
+$query = "BULK INSERT [RawSenateFirstPreferences] FROM '$dataFile' WITH ( FIELDTERMINATOR = ',', FIRSTROW = 3 );"
 Invoke-SqlCmd -ServerInstance $ServerInstance -Database $Database -Query $query
 #>
 

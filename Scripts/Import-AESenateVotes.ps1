@@ -8,8 +8,8 @@
 param
 (
 	[string] $Election = "2016 Federal",
-	[string] $State = "TAS",
-	[string] $FilePath = "..\Data\2016 Federal\aec-senate-formalpreferences-20499-TAS.csv",
+	[string] $State = "WA",
+	[string] $FilePath = "..\Data\2016 Federal\aec-senate-formalpreferences-20499-WA.csv",
 	[string] $ServerInstance = ".\SQLEXPRESS",
 	[string] $Database = "ElectoralAnalysis"
 )
@@ -36,7 +36,7 @@ $dataFile = Join-Path $scriptRoot $FilePath
 Write-Verbose "Importing from: $dataFile"
 
 <#
-$query = "BULK INSERT [SenateFormalPreferencesRaw] FROM '$dataFile' WITH ( FIELDTERMINATOR = ',', FIRSTROW = 3 );"
+$query = "BULK INSERT [RawSenateFormalPreferences] FROM '$dataFile' WITH ( FIELDTERMINATOR = ',', FIRSTROW = 3 );"
 Write-Host $query
 Invoke-SqlCmd -ServerInstance $ServerInstance -Database $Database -Query $query
 #>
@@ -76,7 +76,7 @@ foreach ($row in $data) {
 	
 	if (($count % $batchSize) -eq 0) {
 		Write-Progress -Activity "Importing $State" -PercentComplete ($count * 100 / $total)
-		$query = "INSERT INTO [SenateFormalPreferencesRaw] (
+		$query = "INSERT INTO [RawSenateFormalPreferences] (
 		Election 	
 		,StateAb 
 		,ElectorateNm 
@@ -93,7 +93,7 @@ foreach ($row in $data) {
 }
 if ($batchDataSelect) {
 	Write-Progress -Activity "Importing $State" -PercentComplete ($count * 100 / $total)
-	$query = "INSERT INTO [SenateFormalPreferencesRaw] (
+	$query = "INSERT INTO [RawSenateFormalPreferences] (
 	Election 	
 	,StateAb 
 	,ElectorateNm 
@@ -108,7 +108,7 @@ if ($batchDataSelect) {
 	Write-Progress -Activity "Importing $State" -PercentComplete ($count * 100 / $total)
 }
 
-$result = Invoke-SqlCmd -ServerInstance $ServerInstance -Database $Database -Query "SELECT COUNT(*) AS CountRecords FROM [SenateFormalPreferencesRaw] WHERE Election = '$escapedElection' AND StateAb = '$escapedState';"
+$result = Invoke-SqlCmd -ServerInstance $ServerInstance -Database $Database -Query "SELECT COUNT(*) AS CountRecords FROM [RawSenateFormalPreferences] WHERE Election = '$escapedElection' AND StateAb = '$escapedState';"
 Write-Verbose "Result imported $($result.CountRecords) records, skipped $skipped"
 	
 $endTime = [datetimeoffset]::Now

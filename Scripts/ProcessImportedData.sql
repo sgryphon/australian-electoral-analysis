@@ -170,35 +170,6 @@ FROM (SELECT DISTINCT PartyName
 */
 
 /*
-SELECT * FROM [VoteStaging]
-*/
-
-INSERT INTO [VoteStaging] (
-	Election, 
-	StateAb, 
-	ElectorateNm, 
-	VoteCollectionPointNm, 
-	Preferences, 
-	VoteCount
-)
-SELECT 
-	Election, 
-	StateAb, 
-	ElectorateNm, 
-	VoteCollectionPointNm, 
-	Preferences, 
-	COUNT(*) AS VoteCount
-	FROM RawSenateFormalPreferences 
-	WHERE Processed = 0
-	GROUP BY Election, StateAb, Preferences, ElectorateNm, VoteCollectionPointNm;
-GO
-
-UPDATE [VoteStaging]
-	SET ElectionId = e.ElectionId
-	FROM [VoteStaging] c
-	JOIN ElectionDimension e ON e.Election = c.Election;
-
-/*
 SELECT * FROM TicketDimension
 */
 
@@ -262,6 +233,35 @@ SELECT Election,
 FROM RawSenateFirstPreferences r
 	LEFT JOIN PartyLookup l ON r.PartyName = l.PartyName
 WHERE BallotPosition < 9000 AND Processed = 0;
+
+/*
+SELECT * FROM [VoteStaging]
+*/
+
+INSERT INTO [VoteStaging] (
+	Election, 
+	StateAb, 
+	ElectorateNm, 
+	VoteCollectionPointNm, 
+	Preferences, 
+	VoteCount
+)
+SELECT 
+	Election, 
+	StateAb, 
+	ElectorateNm, 
+	VoteCollectionPointNm, 
+	Preferences, 
+	COUNT(*) AS VoteCount
+	FROM RawSenateFormalPreferences 
+	WHERE Processed = 0
+	GROUP BY Election, StateAb, Preferences, ElectorateNm, VoteCollectionPointNm;
+GO
+
+UPDATE [VoteStaging]
+	SET ElectionId = e.ElectionId
+	FROM [VoteStaging] c
+	JOIN ElectionDimension e ON e.Election = c.Election;
  
 /*
 SELECT * FROM LocationDimension
@@ -317,10 +317,11 @@ WHERE l.LocationId IS NULL;
 UPDATE [VoteStaging]
 	SET LocationId = l.LocationId
 	FROM [VoteStaging] c
-	JOIN LocationDimension l 
-	ON c.[StateAb] = l.[State] 
-		AND c.ElectorateNm = l.Division
-		AND c.VoteCollectionPointNm = l.VoteCollectionPoint;
+		JOIN LocationDimension l 
+		ON c.[StateAb] = l.[State] 
+			AND c.ElectorateNm = l.Division
+			AND c.VoteCollectionPointNm = l.VoteCollectionPoint
+	WHERE c.Processed = 0;
 
 /*
 SELECT * FROM PreferenceDimension
@@ -354,16 +355,18 @@ GO
 UPDATE [VoteStaging]
 	SET PreferenceId = p.PreferenceId
 	FROM [VoteStaging] c
-	JOIN PreferenceDimension p 
-	ON c.Election = p.Election
-		AND c.[StateAb] = p.Electorate
-		AND c.Preferences = p.Preferences;
+		JOIN PreferenceDimension p 
+		ON c.Election = p.Election
+			AND c.[StateAb] = p.Electorate
+			AND c.Preferences = p.Preferences
+	WHERE Processed = 0;
 
 /*
 SELECT * FROM PreferenceStaging
 */
 
--- Split preferences at commas, match to ticket based on index, take individual numbers (TAS ~ 1 min)
+-- Split preferences at commas, match to ticket based on index, take individual numbers
+-- (TAS ~ 1 min, WA ~ 7 min)
 INSERT INTO PreferenceStaging (
 	ElectionId,
 	PreferenceId,
@@ -407,7 +410,8 @@ WHERE PreferenceValue <> '' AND PreferenceValue NOT LIKE '[*/]';
 --ORDER BY p.PreferenceId, PreferencePosition;
 GO
 
--- Check highest BTL sequence (TAS ~ 3 min)
+-- Check highest BTL sequence
+-- (TAS ~ 3 min, WA ~ 5 min)
 
 UPDATE PreferenceDimension
 SET HighestBtlPreference = 0
@@ -421,7 +425,7 @@ SET @counter = 1;
 SET @updatedRows = -1;
 SET @max = (SELECT MAX(PreferencePosition) FROM TicketDimension);
 PRINT 'Max preferences: ' + CONVERT(nvarchar(5), @max);
-WHILE ( (@counter <= @max + 1) AND (@updatedRows <> 0 ) BEGIN
+WHILE ( (@counter <= @max + 1) AND (@updatedRows <> 0) ) BEGIN
 	PRINT 'Processing ' + CONVERT(varchar(5), @counter);
 
 	UPDATE PreferenceDimension
@@ -558,4 +562,22 @@ SELECT
 FROM VoteStaging
 WHERE Processed = 0;
 GO
-	
+
+
+-- Cleanup / mark processed
+
+UPDATE RawSenateFirstPreferences 
+SET Processed = 1
+WHERE Processed = 0;
+
+UPDATE RawSenateFormalPreferences 
+SET Processed = 1
+WHERE Processed = 0;
+
+UPDATE VoteStaging 
+SET Processed = 1
+WHERE Processed = 0;
+
+UPDATE PreferenceStaging 
+SET Processed = 1
+WHERE Processed = 0;

@@ -12,6 +12,17 @@ DROP TABLE [dbo].[ElectionDimension];
 DROP TABLE [dbo].[PartyLookup]
 */
 
+/*
+TODO:
+ Rename existing PreferenceFact to NumberingFact
+
+ House, Electorate should be in ElectionDimension (remove from TicketFact, PreferenceFact)
+
+ Add TicketFact table to record relationship between TicketId & ElectionId
+ Add PreferenceFact table to record relationship between PreferenceId & ElectionId
+
+*/
+
 CREATE TABLE [dbo].[RawSenateFirstPreferences] (
 	[Id] [int] IDENTITY(1,1) NOT NULL,
 		CONSTRAINT [PK_RawSenateFirstPreferences] PRIMARY KEY CLUSTERED ([Id]),

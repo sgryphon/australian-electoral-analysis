@@ -18,7 +18,7 @@ GROUP BY
 	t.Electorate, 
 	t.Ticket,
 	t.PartyKey
-ORDER BY VoteCount DESC;
+ORDER BY Electorate, VoteCount DESC;
 	 
 
 SELECT * FROM RawSenateFirstPreferences WHERE StateAb = 'TAS';
@@ -68,9 +68,9 @@ GROUP BY
 	f.Electorate, 
 	f.PartyKey,
 	s.PartyKey
-ORDER BY VoteCount DESC;
+ORDER BY f.Electorate, VoteCount DESC;
 
--- Preferences to LDP
+-- Preferences 2
 SELECT 
 	e.Election, 
 	p.Electorate, 
@@ -96,4 +96,46 @@ GROUP BY
 	s.PartyKey,
 	s.TicketId
 ORDER BY Election, Electorate, FirstPreference, SecondPreference;
+
+-- Preferences 3
+SELECT 
+	e.Election, 
+	f.Electorate, 
+	f.PartyKey AS FirstPreference, 
+	t2.PartyKey AS SecondPreference,
+	t3.PartyKey AS ThirdPreference,
+	SUM(v.VoteCount) AS TotalVotes
+FROM VoteFact v
+	JOIN ElectionDimension e ON e.ElectionId = v.ElectionId
+	JOIN TicketDimension f ON f.TicketId = v.FirstPreferenceTicketId
+	JOIN (SELECT PreferenceId,
+			(SELECT TicketId FROM PreferenceFact WHERE PreferenceId = p.PreferenceId AND PreferenceNumber = 2) AS TicketId2,
+			(SELECT TicketId FROM PreferenceFact WHERE PreferenceId = p.PreferenceId AND PreferenceNumber = 3) AS TicketId3
+		FROM PreferenceDimension p
+		WHERE PreferenceType='ATL') x ON x.PreferenceId = v.PreferenceId
+	LEFT JOIN TicketDimension t2 ON t2.TicketId = x.TicketId2
+	LEFT JOIN TicketDimension t3 ON t3.TicketId = x.TicketId3
+GROUP BY
+	e.Election, 
+	f.Electorate, 
+	f.PartyKey,
+	t2.PartyKey,
+	t3.PartyKey
+ORDER BY Election, Electorate, FirstPreference, SecondPreference, ThirdPreference;
+
+-- Preference distribution for LDP:
+
+SELECT 
+	t.Electorate,
+	t.PartyKey,
+	n.PreferenceNumber,
+	SUM(VoteCount) AS VoteCount
+FROM TicketDimension t
+	JOIN PreferenceFact n ON n.TicketId = t.TicketId
+	JOIN PreferenceDimension p ON p.PreferenceId = n.PreferenceId
+	JOIN VoteFact v ON v.PreferenceId = n.PreferenceId
+	WHERE PreferenceType = 'ATL'
+GROUP BY t.Electorate, t.PartyKey, n.PreferenceNumber
+ORDER BY Electorate, PartyKey, PreferenceNumber;
+
 
