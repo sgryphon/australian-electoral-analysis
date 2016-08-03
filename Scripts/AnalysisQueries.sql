@@ -1,141 +1,166 @@
-
-
--- ATL first preferences
+-- Summary first preferences type
 SELECT 
 	e.Election, 
-	t.Electorate, 
-	t.Ticket,
-	t.PartyKey, 
-	SUM(v.VoteCount) AS VoteCount
+	e.Electorate, 
+	p.PreferenceType,
+	SUM(v.VoteCount) AS Votes,
+	CONVERT([decimal](18,0), SUM(v.StateBasisPoints)) AS BasisPoints
 FROM VoteFact v
 JOIN ElectionDimension e ON e.ElectionId = v.ElectionId
 JOIN PreferenceDimension p ON p.PreferenceId = v.PreferenceId
-JOIN LocationDimension l ON l.LocationId = v.LocationId
-JOIN TicketDimension t ON t.TicketId = v.FirstPreferenceTicketId
-WHERE p.PreferenceType = 'ATL'
 GROUP BY 
 	e.Election, 
-	t.Electorate, 
-	t.Ticket,
-	t.PartyKey
-ORDER BY Electorate, VoteCount DESC;
+	e.Electorate, 
+	p.PreferenceType
+ORDER BY Election, Electorate, PreferenceType;
+
+-- Senate ATL first preferences
+SELECT 
+	e.Election, 
+	e.Electorate, 
+	t1.Ticket,
+	t1.PartyKey, 
+	SUM(v.VoteCount) AS Votes,
+	CONVERT([decimal](18,0), SUM(v.StateBasisPoints)) AS BasisPoints
+FROM VoteFact v
+JOIN ElectionDimension e ON e.ElectionId = v.ElectionId
+JOIN PreferenceDimension p ON p.PreferenceId = v.PreferenceId
+JOIN TicketDimension t1 ON t1.TicketId = v.FirstPreferenceTicketId
+WHERE p.PreferenceType = 'ATL' AND e.House = 'Senate'
+GROUP BY 
+	e.Election, 
+	e.Electorate, 
+	t1.Ticket,
+	t1.PartyKey
+ORDER BY Election, Electorate, Votes DESC;
+
+-- Senate first preferences by candidate
+SELECT 
+	e.Election, 
+	e.Electorate, 
+	t1.Ticket,
+	t1.PartyKey, 
+	t1.BallotPosition,
+	t1.CandidateDetails,
+	SUM(v.VoteCount) AS Votes,
+	CONVERT([decimal](18,0), SUM(v.StateBasisPoints)) AS BasisPoints
+FROM VoteFact v
+JOIN ElectionDimension e ON e.ElectionId = v.ElectionId
+JOIN TicketDimension t1 ON t1.TicketId = v.FirstPreferenceTicketId
+WHERE e.House = 'Senate'
+GROUP BY 
+	e.Election, 
+	e.Electorate, 
+	t1.Ticket,
+	t1.PartyKey, 
+	t1.BallotPosition,
+	t1.CandidateDetails
 	 
-
-SELECT * FROM RawSenateFirstPreferences WHERE StateAb = 'TAS';
-
--- First preferences by location type
+-- Senate first preferences by candidate by location type
 SELECT 
 	e.Election, 
-	t.Electorate, 
-	t.Ticket,
-	t.PartyKey, 
-	t.BallotPosition,
-	t.CandidateDetails,
+	e.Electorate, 
+	t1.Ticket,
+	t1.PartyKey, 
+	t1.BallotPosition,
+	t1.CandidateDetails,
 	l.LocationType,
-	SUM(v.VoteCount) AS VoteCount
+	SUM(v.VoteCount) AS Votes,
+	CONVERT([decimal](18,0), SUM(v.StateBasisPoints)) AS BasisPoints
 FROM VoteFact v
 JOIN ElectionDimension e ON e.ElectionId = v.ElectionId
 JOIN PreferenceDimension p ON p.PreferenceId = v.PreferenceId
 JOIN LocationDimension l ON l.LocationId = v.LocationId
-JOIN TicketDimension t ON t.TicketId = v.FirstPreferenceTicketId
+JOIN TicketDimension t1 ON t1.TicketId = v.FirstPreferenceTicketId
+WHERE e.House = 'Senate'
 GROUP BY 
 	e.Election, 
-	t.Electorate, 
-	t.Ticket,
-	t.PartyKey, 
-	t.BallotPosition,
-	t.CandidateDetails,
+	e.Electorate, 
+	t1.Ticket,
+	t1.PartyKey, 
+	t1.BallotPosition,
+	t1.CandidateDetails,
 	l.LocationType
 
--- LDP Preferences
+-- Senate ATL preference distribution by party
 SELECT 
-	e.Election, 
-	f.Electorate, 
-	f.PartyKey AS FirstPreference, 
-	s.PartyKey AS SecondPreference, 
-	SUM(v.VoteCount) AS VoteCount
-FROM VoteFact v
-JOIN ElectionDimension e ON e.ElectionId = v.ElectionId
-JOIN PreferenceDimension p ON p.PreferenceId = v.PreferenceId
-JOIN LocationDimension l ON l.LocationId = v.LocationId
-JOIN TicketDimension f ON f.TicketId = v.FirstPreferenceTicketId
-LEFT JOIN PreferenceFact sp ON sp.PreferenceId = v.PreferenceId AND sp.PreferenceNumber = 2
-LEFT JOIN TicketDimension s ON s.TicketId = sp.TicketId 
-WHERE p.PreferenceType = 'ATL'
-AND f.PartyKey = 'LDP'
-GROUP BY 
-	e.Election, 
-	f.Electorate, 
-	f.PartyKey,
-	s.PartyKey
-ORDER BY f.Electorate, VoteCount DESC;
-
--- Preferences 2
-SELECT 
-	e.Election, 
-	p.Electorate, 
-	f.PartyKey AS FirstPreference, 
-	SUM(v.VoteCount) AS TotalVotes,
-	s.PartyKey AS SecondPreference,
-	(SELECT SUM(v.VoteCount) 
-		FROM VoteFact v 
-			LEFT JOIN PreferenceFact pf ON pf.PreferenceId = v.PreferenceId AND pf.PreferenceNumber = 2
-		WHERE v.FirstPreferenceTicketId = f.TicketId
-		AND pf.TicketId = s.TicketId) AS SecondPreferenceVotes
+	e.Election,
+	e.Electorate,
+	n.PreferenceNumber,
+	t.PartyKey,
+	SUM(VoteCount) AS Votes,
+	CONVERT([decimal](18,0), SUM(StateBasisPoints)) AS BasisPoints
 FROM VoteFact v
 	JOIN ElectionDimension e ON e.ElectionId = v.ElectionId
 	JOIN PreferenceDimension p ON p.PreferenceId = v.PreferenceId
-	JOIN TicketDimension f ON f.TicketId = v.FirstPreferenceTicketId
-	LEFT JOIN TicketDimension s ON f.Election = s.Election AND f.Electorate = s.Electorate
-WHERE f.BallotPosition = 0 AND s.BallotPosition = 0
-GROUP BY 
-	e.Election, 
-	p.Electorate, 
-	f.TicketId,
-	f.PartyKey,
-	s.PartyKey,
-	s.TicketId
-ORDER BY Election, Electorate, FirstPreference, SecondPreference;
+	JOIN NumberingFact n ON n.PreferenceId = p.PreferenceId
+	JOIN TicketDimension t ON t.TicketId = n.TicketId
+WHERE p.PreferenceType = 'ATL' AND e.House = 'Senate'
+GROUP BY e.Election, e.Electorate, n.PreferenceNumber, t.PartyKey
+ORDER BY Election, Electorate, PreferenceNumber, PartyKey;
 
--- Preferences 3
+-- Senate ATL preference distribution by first preference and party
 SELECT 
-	e.Election, 
-	f.Electorate, 
-	f.PartyKey AS FirstPreference, 
-	t2.PartyKey AS SecondPreference,
-	t3.PartyKey AS ThirdPreference,
-	SUM(v.VoteCount) AS TotalVotes
+	e.Election,
+	e.Electorate,
+	t1.PartyKey AS FirstPreferencePartyKey,
+	n.PreferenceNumber,
+	t.PartyKey,
+	SUM(VoteCount) AS Votes,
+	CONVERT([decimal](18,0), SUM(StateBasisPoints)) AS BasisPoints
 FROM VoteFact v
 	JOIN ElectionDimension e ON e.ElectionId = v.ElectionId
-	JOIN TicketDimension f ON f.TicketId = v.FirstPreferenceTicketId
+	JOIN PreferenceDimension p ON p.PreferenceId = v.PreferenceId
+	JOIN TicketDimension t1 ON t1.TicketId = v.FirstPreferenceTicketId
+	JOIN NumberingFact n ON n.PreferenceId = p.PreferenceId
+	JOIN TicketDimension t ON t.TicketId = n.TicketId
+WHERE p.PreferenceType = 'ATL' AND e.House = 'Senate'
+GROUP BY e.Election, e.Electorate, t1.PartyKey, n.PreferenceNumber, t.PartyKey
+ORDER BY Election, Electorate, FirstPreferencePartyKey, PreferenceNumber, PartyKey;
+
+-- Preference sequence (first three)
+SELECT
+	Election,
+	Electorate,
+	FirstPreference,
+	CONVERT([decimal](18,0), SUM(StateBasisPoints) 
+		OVER(PARTITION BY Election, Electorate, FirstPreference)) AS FirstPreferenceBasisPoints,
+	SecondPreference,
+	CONVERT([decimal](18,0), SUM(StateBasisPoints) 
+		OVER(PARTITION BY Election, Electorate, FirstPreference, SecondPreference)) AS SecondPreferenceBasisPoints,
+	(SUM(StateBasisPoints) OVER(PARTITION BY Election, Electorate, FirstPreference, SecondPreference) /
+		SUM(StateBasisPoints) OVER(PARTITION BY Election, Electorate, FirstPreference)) AS SecondFraction,
+	ThirdPreference,
+	CONVERT([decimal](18,0), StateBasisPoints) AS ThirdPreferenceBasisPoints,
+	(StateBasisPoints / SUM(StateBasisPoints) OVER(PARTITION BY Election, Electorate, FirstPreference)) AS ThirdFraction
+FROM( 
+SELECT 
+	e.Election, 
+	e.Electorate, 
+	t1.PartyKey AS FirstPreference, 
+	t2.PartyKey AS SecondPreference,
+	t3.PartyKey AS ThirdPreference,
+	SUM(v.StateBasisPoints) AS StateBasisPoints
+FROM VoteFact v
+	JOIN ElectionDimension e ON e.ElectionId = v.ElectionId
+	JOIN TicketDimension t1 ON t1.TicketId = v.FirstPreferenceTicketId
 	JOIN (SELECT PreferenceId,
-			(SELECT TicketId FROM PreferenceFact WHERE PreferenceId = p.PreferenceId AND PreferenceNumber = 2) AS TicketId2,
-			(SELECT TicketId FROM PreferenceFact WHERE PreferenceId = p.PreferenceId AND PreferenceNumber = 3) AS TicketId3
+			(SELECT TicketId FROM NumberingFact WHERE PreferenceId = p.PreferenceId AND PreferenceNumber = 2) AS TicketId2,
+			(SELECT TicketId FROM NumberingFact WHERE PreferenceId = p.PreferenceId AND PreferenceNumber = 3) AS TicketId3
 		FROM PreferenceDimension p
 		WHERE PreferenceType='ATL') x ON x.PreferenceId = v.PreferenceId
 	LEFT JOIN TicketDimension t2 ON t2.TicketId = x.TicketId2
 	LEFT JOIN TicketDimension t3 ON t3.TicketId = x.TicketId3
+WHERE e.House = 'Senate'
 GROUP BY
 	e.Election, 
-	f.Electorate, 
-	f.PartyKey,
+	e.Electorate, 
+	t1.PartyKey,
 	t2.PartyKey,
 	t3.PartyKey
+) y
 ORDER BY Election, Electorate, FirstPreference, SecondPreference, ThirdPreference;
 
--- Preference distribution for LDP:
 
-SELECT 
-	t.Electorate,
-	t.PartyKey,
-	n.PreferenceNumber,
-	SUM(VoteCount) AS VoteCount
-FROM TicketDimension t
-	JOIN PreferenceFact n ON n.TicketId = t.TicketId
-	JOIN PreferenceDimension p ON p.PreferenceId = n.PreferenceId
-	JOIN VoteFact v ON v.PreferenceId = n.PreferenceId
-	WHERE PreferenceType = 'ATL'
-GROUP BY t.Electorate, t.PartyKey, n.PreferenceNumber
-ORDER BY Electorate, PartyKey, PreferenceNumber;
 
 

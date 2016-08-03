@@ -1,33 +1,10 @@
 /*
-SELECT * FROM ElectionDimension;
-*/
+SELECT TOP 100 * FROM RawSenateFirstPreferences
+SELECT TOP 100 * FROM RawSenateFormalPreferences
 
-IF NOT EXISTS (SELECT * FROM ElectionDimension WHERE Election = 'None') BEGIN
-	INSERT INTO [ElectionDimension] (
-		Election,
-		Year,
-		Date,
-		Type
-	) VALUES (
-		'None',
-		0,
-		'19000101',
-		'None'
-	);
-END
-IF NOT EXISTS (SELECT * FROM ElectionDimension WHERE Election = '2016 Federal') BEGIN
-	INSERT INTO [ElectionDimension] (
-		Election,
-		Year,
-		Date,
-		Type
-	) VALUES (
-		'2016 Federal',
-		2016,
-		'20160702',
-		'Double Dissolution'
-	);
-END
+UPDATE RawSenateFirstPreferences SET Processed = 0;
+UPDATE RawSenateFormalPreferences SET Processed = 0;
+*/
 
 /*
 SELECT * FROM PartyLookup;
@@ -120,7 +97,7 @@ IF NOT EXISTS (SELECT * FROM PartyLookup) BEGIN
 	INSERT INTO [PartyLookup] (PartyName, PartyKey, PartyShort) VALUES ('The Fishing Party', 'FPY', 'Fishing');
 	INSERT INTO [PartyLookup] (PartyName, PartyKey, PartyShort) VALUES ('The Greens', 'GRN', 'Greens');
 	INSERT INTO [PartyLookup] (PartyName, PartyKey, PartyShort) VALUES ('The Greens (WA)', 'GRN', 'Greens');
-	INSERT INTO [PartyLookup] (PartyName, PartyKey, PartyShort) VALUES ('The Nationals', 'LNP', 'Lib-Nat');
+	INSERT INTO [PartyLookup] (PartyName, PartyKey, PartyShort) VALUES ('The Nationals', 'NAT', 'National');
 	INSERT INTO [PartyLookup] (PartyName, PartyKey, PartyShort) VALUES ('The Wikileaks Party', 'WKP', 'Wiki');
 	INSERT INTO [PartyLookup] (PartyName, PartyKey, PartyShort) VALUES ('Uniting Australia Party', 'UNP', 'UniteAus');
 	INSERT INTO [PartyLookup] (PartyName, PartyKey, PartyShort) VALUES ('Voluntary Euthanasia Party', 'VEP', 'VolEuth');
@@ -170,40 +147,59 @@ FROM (SELECT DISTINCT PartyName
 */
 
 /*
-SELECT * FROM TicketDimension
+SELECT * FROM ElectionDimension
 */
 
-IF NOT EXISTS (SELECT * FROM TicketDimension WHERE Ticket = 'NA') BEGIN
-	INSERT INTO TicketDimension (
+IF NOT EXISTS (SELECT * FROM ElectionDimension WHERE Election = 'None') BEGIN
+	INSERT INTO [ElectionDimension] (
 		Election,
 		House,
 		Electorate,
-		Ticket,
-		BallotPosition,
-		CandidateDetails,
-		PartyName,
-		PartyKey,
-		PartyShort,
-		PreferencePosition
-	)
-	VALUES (
-		'',
-		'',
-		'',
-		'NA',
+		Year,
+		Date,
+		Type
+	) VALUES (
+		'None',
+		'None',
+		'None',
 		0,
-		'None',
-		'',
-		'N/A',
-		'None',
-		0
-	)
+		'19000101',
+		'None'
+	);
 END
 
+INSERT INTO [ElectionDimension] (
+		Election,
+		House,
+		Electorate,
+		Year,
+		Date,
+		Type
+	) 
+SELECT DISTINCT r.Election, 
+	'Senate' AS House, 
+	r.StateAb AS Electorate,
+	0 AS [Year],
+	'19000101' AS [Date],
+	'' AS [Type]
+FROM RawSenateFirstPreferences r
+	LEFT JOIN ElectionDimension e 
+		ON e.Election = r.Election
+			AND e.House = 'Senate'
+			AND e.Electorate = r.StateAb
+WHERE Processed = 0 AND e.ElectionId IS NULL;
+
+UPDATE ElectionDimension
+SET [Year] = 2016, [Date] = '20160702', [Type] = 'Double Dissolution'
+WHERE [Type] = '' AND Election = '2016 Federal';
+GO
+
+/*
+SELECT * FROM TicketDimension
+*/
+
 INSERT INTO TicketDimension (
-	Election,
-	House,
-	Electorate,
+	ElectionId,
 	Ticket,
 	BallotPosition,
 	CandidateDetails,
@@ -212,26 +208,47 @@ INSERT INTO TicketDimension (
 	PartyShort,
 	PreferencePosition
 )
-SELECT Election, 
-	'Senate' AS House, 
-	StateAb AS Electorate, 
+SELECT DISTINCT
+	e.ElectionId,
+	'NA' AS Ticket,
+	0 AS BallotPosition,
+	'*None' AS CandidateDetails,
+	'' AS PartyName,
+	'*NA' AS PartyKey,
+	'*None' AS PartyShort,
+	0 AS PreferencePosition
+FROM ElectionDimension e
+	LEFT JOIN TicketDimension t ON t.ElectionId = e.ElectionId
+WHERE t.ElectionId IS NULL;
+
+INSERT INTO TicketDimension (
+	ElectionId,
+	Ticket,
+	BallotPosition,
+	CandidateDetails,
+	PartyName,
+	PartyKey,
+	PartyShort,
+	PreferencePosition
+)
+SELECT ElectionId, 
 	Ticket, 
 	BallotPosition, 
 	CandidateDetails, 
 	r.PartyName,
 	l.PartyKey AS PartyKey,
 	l.PartyShort AS PartyShort,
-	(SELECT p.Position FROM 
-		(SELECT Id, 
-			ROW_NUMBER() OVER(ORDER BY 
+	ROW_NUMBER() OVER(
+		PARTITION BY ElectionId
+		ORDER BY 
 			CASE WHEN BallotPosition = 0 THEN 0 ELSE 1 END, 
 			RIGHT('_'+Ticket,2), 
-			BallotPosition) AS Position 
-		FROM RawSenateFirstPreferences
-		WHERE StateAb = r.StateAb AND Election= r.Election AND BallotPosition < 9000) p 
-	WHERE p.Id = r.Id) AS PreferencePosition
+			BallotPosition) 
+		AS PreferencePosition
 FROM RawSenateFirstPreferences r
 	LEFT JOIN PartyLookup l ON r.PartyName = l.PartyName
+	LEFT JOIN ElectionDimension e 
+		ON e.Election = r.Election AND e.House = 'Senate' AND e.Electorate = r.StateAb
 WHERE BallotPosition < 9000 AND Processed = 0;
 
 /*
@@ -260,25 +277,29 @@ GO
 
 UPDATE [VoteStaging]
 	SET ElectionId = e.ElectionId
-	FROM [VoteStaging] c
-	JOIN ElectionDimension e ON e.Election = c.Election;
+	FROM [VoteStaging] s
+	JOIN ElectionDimension e 
+		ON e.Election = s.Election AND e.House = 'Senate' AND e.Electorate = s.StateAb
+	WHERE s.Processed = 0;
  
 /*
 SELECT * FROM LocationDimension
 */
 
-IF NOT EXISTS (SELECT * FROM LocationDimension WHERE [State] = 'N/A') BEGIN
+IF NOT EXISTS (SELECT * FROM LocationDimension WHERE [State] = '*NA') BEGIN
 	INSERT INTO LocationDimension (
 		[State], 
 		Division, 
 		VoteCollectionPoint,
-		LocationType
+		LocationType,
+		LocationSubtype
 	)
 	VALUES (
-		'N/A',
-		'None',
-		'None',
-		'None'
+		'*NA',
+		'*None',
+		'*None',
+		'',
+		''
 	)
 END
 
@@ -286,7 +307,8 @@ INSERT INTO LocationDimension (
 	[State], 
 	Division, 
 	VoteCollectionPoint,
-	LocationType
+	LocationType,
+	LocationSubtype
 )
 SELECT 
 	c.[State], 
@@ -297,11 +319,14 @@ SELECT
 		WHEN c.VoteCollectionPoint LIKE 'POSTAL %' THEN 'Postal'
 		WHEN c.VoteCollectionPoint LIKE 'PRE_POLL %' THEN 'PrePoll'
 		WHEN c.VoteCollectionPoint LIKE 'PROVISIONAL %' THEN 'Provisional'
-		WHEN c.VoteCollectionPoint LIKE 'Special Hospital Team %' THEN 'Ord Special'
-		WHEN c.VoteCollectionPoint LIKE '%PPVC%' THEN 'Ord PPVC'
-		WHEN c.VoteCollectionPoint LIKE '%(PREPOLL)%' THEN 'Ord PrePoll'
 		ELSE 'Ordinary'
-	END AS LocationType
+	END AS LocationType,
+	CASE 
+		WHEN c.VoteCollectionPoint LIKE 'Special Hospital Team %' THEN 'Special'
+		WHEN c.VoteCollectionPoint LIKE '%PPVC%' THEN 'PPVC'
+		WHEN c.VoteCollectionPoint LIKE '%(PREPOLL)%' THEN 'PREPOLL'
+		ELSE ''
+	END AS LocationSubtype
 FROM (SELECT DISTINCT 
 		StateAb AS [State], 
 		ElectorateNm AS Division, 
@@ -328,86 +353,80 @@ SELECT * FROM PreferenceDimension
 */
 
 INSERT INTO PreferenceDimension (
-	Election,
-	House,
-	Electorate,
+	ElectionId,
 	Preferences,
 	PreferenceType,
 	PreferenceList,
 	HowToVote
 )
 SELECT 
-	Election,
-	'Senate' AS House,
-	Electorate,
+	ElectionId,
 	Preferences,
 	'' AS PreferenceType,
 	'' AS PreferenceList,
 	'' AS HowToVote
 FROM (SELECT DISTINCT 
-		Election,
-		StateAb AS Electorate,
+		ElectionId,
 		Preferences
 	FROM [VoteStaging]
-	WHERE Processed = 0) c;
+	WHERE Processed = 0) x;
 GO
 
 UPDATE [VoteStaging]
 	SET PreferenceId = p.PreferenceId
-	FROM [VoteStaging] c
+	FROM [VoteStaging] s
 		JOIN PreferenceDimension p 
-		ON c.Election = p.Election
-			AND c.[StateAb] = p.Electorate
-			AND c.Preferences = p.Preferences
+		ON s.ElectionId = p.ElectionId
+			AND s.Preferences = p.Preferences
 	WHERE Processed = 0;
 
 /*
-SELECT * FROM PreferenceStaging
+SELECT * FROM NumberingStaging
+SELECT COUNT(*) FROM NumberingStaging
 */
 
 -- Split preferences at commas, match to ticket based on index, take individual numbers
 -- (TAS ~ 1 min, WA ~ 7 min)
-INSERT INTO PreferenceStaging (
+INSERT INTO NumberingStaging (
 	ElectionId,
 	PreferenceId,
+	PreferenceValue,
 	PreferenceNumber,
+	PreferencePosition,
 	TicketId
 )
 SELECT 
-	ElectionId,
-	p.PreferenceId, 
+	y.ElectionId,
+	PreferenceId, 
+	PreferenceValue,
 	CASE 
 		WHEN PreferenceValue = '*' THEN -1
 		WHEN PreferenceValue = '/' THEN -2
 		WHEN PreferenceValue = '' THEN -3
 		ELSE CONVERT(smallint, PreferenceValue)
-	END PreferenceNumber, 
-	TicketId 
-	-- ,1 AS [Count]
-	-- ,t.PreferencePosition
+	END AS PreferenceNumber, 
+	y.PreferencePosition,
+	TicketId
 FROM (SELECT
+        ElectionId,
 		PreferenceId, 
 		ROW_NUMBER() OVER (PARTITION BY PreferenceId ORDER BY LEN(PreferenceRight) DESC) AS PreferencePosition,
 		LEFT(PreferenceRight, CHARINDEX(',', PreferenceRight + ',') - 1) AS PreferenceValue,
 		PreferenceRight
 	FROM
-		(SELECT PreferenceId, LTRIM(SUBSTRING(p.Preferences, n.Number, 1000)) AS PreferenceRight
+		(SELECT ElectionId, PreferenceId, LTRIM(SUBSTRING(p.Preferences, n.Number, 1000)) AS PreferenceRight
 			FROM 
-				(SELECT PreferenceId, Preferences 
+				(SELECT ElectionId, PreferenceId, Preferences 
 					FROM PreferenceDimension
-					WHERE PreferenceId NOT IN (SELECT PreferenceId FROM PreferenceFact)) p
+					WHERE PreferenceId NOT IN (SELECT PreferenceId FROM NumberingStaging)
+						AND PreferenceType = '') p
 			LEFT OUTER JOIN
 				(SELECT DISTINCT number FROM master.dbo.spt_values WHERE number BETWEEN 1 AND 1000) n
 					ON n.Number <= LEN(',' + p.Preferences) AND SUBSTRING(',' + p.Preferences, n.Number, 1) = ',') x
-) y
-	JOIN PreferenceDimension p 
-		ON p.PreferenceId = y.PreferenceId
-	JOIN ElectionDimension e
-		ON e.Election = p.Election
-	JOIN TicketDimension t
-		ON t.Election = p.Election AND t.Electorate = p.Electorate AND t.PreferencePosition = y.PreferencePosition
-WHERE PreferenceValue <> '' AND PreferenceValue NOT LIKE '[*/]';
---ORDER BY p.PreferenceId, PreferencePosition;
+	) y
+	LEFT JOIN TicketDimension t
+		ON t.ElectionId = y.ElectionId AND t.PreferencePosition = y.PreferencePosition
+WHERE PreferenceValue <> '';
 GO
 
 -- Check highest BTL sequence
@@ -431,17 +450,19 @@ WHILE ( (@counter <= @max + 1) AND (@updatedRows <> 0) ) BEGIN
 	UPDATE PreferenceDimension
 	SET HighestBtlPreference = HighestBtlPreference + 1
 	FROM PreferenceDimension p
-	JOIN (SELECT p1.Election, p1.PreferenceId, COUNT(TicketId) AS HowMany
+	JOIN (
+		-- Find exactly one BTL (ballot position > 0) numbering that is one greater than current highest 
+		SELECT p1.PreferenceId, COUNT(TicketId) AS HowMany
 		FROM PreferenceDimension p1
-		JOIN (SELECT Election, PreferenceId, PreferenceNumber, s.TicketId 
-				FROM PreferenceStaging s
+		JOIN (SELECT PreferenceId, PreferenceNumber, s.TicketId 
+				FROM NumberingStaging s
 				JOIN TicketDimension t ON s.TicketId = t.TicketId
 				WHERE Processed = 0 AND t.BallotPosition > 0
-			) x ON p1.Election = x.Election AND p1.PreferenceId = x.PreferenceId
+			) x ON p1.PreferenceId = x.PreferenceId
 		WHERE x.PreferenceNumber = (p1.HighestBtlPreference + 1)
-		GROUP BY p1.Election, p1.PreferenceId
+		GROUP BY p1.PreferenceId
 		HAVING COUNT(TicketId) = 1
-	) y ON p.Election = y.Election AND p.PreferenceId = y.PreferenceId;
+	) y ON p.PreferenceId = y.PreferenceId;
 
 	SET @updatedRows = (SELECT @@ROWCOUNT);
 
@@ -469,17 +490,19 @@ WHILE ( (@counter <= @max + 1) AND (@updatedRows <> 0) ) BEGIN
 	UPDATE PreferenceDimension
 	SET HighestAtlPreference = HighestAtlPreference + 1
 	FROM PreferenceDimension p
-	JOIN (SELECT p1.Election, p1.PreferenceId, COUNT(TicketId) AS HowMany
+	JOIN (
+		-- Find exactly one ATL (ballot position = 0) numbering that is one greater than current highest 
+		SELECT p1.PreferenceId, COUNT(TicketId) AS HowMany
 		FROM PreferenceDimension p1
-		JOIN (SELECT Election, PreferenceId, PreferenceNumber, s.TicketId 
-				FROM PreferenceStaging s
+		JOIN (SELECT PreferenceId, PreferenceNumber, s.TicketId 
+				FROM NumberingStaging s
 				JOIN TicketDimension t ON s.TicketId = t.TicketId
 				WHERE Processed = 0 AND t.BallotPosition = 0
-			) x ON p1.Election = x.Election AND p1.PreferenceId = x.PreferenceId
+			) x ON p1.PreferenceId = x.PreferenceId
 		WHERE x.PreferenceNumber = (p1.HighestAtlPreference + 1)
-		GROUP BY p1.Election, p1.PreferenceId
+		GROUP BY p1.PreferenceId
 		HAVING COUNT(TicketId) = 1
-	) y ON p.Election = y.Election AND p.PreferenceId = y.PreferenceId;
+	) y ON p.PreferenceId = y.PreferenceId;
 
 	SET @updatedRows = (SELECT @@ROWCOUNT);
 
@@ -499,50 +522,117 @@ WHERE PreferenceType = '';
 GO
 
 /*
-SELECT * FROM PreferenceFact
+SELECT * FROM NumberingFact
 */
 
 -- Transfer BTL
 
-INSERT INTO PreferenceFact
+INSERT INTO NumberingFact
 	(ElectionId, PreferenceId, TicketId, PreferenceNumber)
-SELECT ElectionId, s.PreferenceId, s.TicketId, PreferenceNumber
-FROM PreferenceStaging s
+SELECT s.ElectionId, s.PreferenceId, s.TicketId, PreferenceNumber
+FROM NumberingStaging s
 JOIN PreferenceDimension p ON s.PreferenceId = p.PreferenceId
 JOIN TicketDimension t ON s.TicketId = t.TicketId
 WHERE Processed = 0
-	AND PreferenceType = 'BTL' 
-	AND BallotPosition > 0
+	AND p.PreferenceType = 'BTL' 
+	AND t.BallotPosition > 0
+	AND PreferenceNumber > 0
 	AND PreferenceNumber <= HighestBtlPreference;
 GO
 
 -- Transfer ATL
 
-INSERT INTO PreferenceFact
+INSERT INTO NumberingFact
 	(ElectionId, PreferenceId, TicketId, PreferenceNumber)
-SELECT ElectionId, s.PreferenceId, s.TicketId, PreferenceNumber
-FROM PreferenceStaging s
+SELECT s.ElectionId, s.PreferenceId, s.TicketId, PreferenceNumber
+FROM NumberingStaging s
 JOIN PreferenceDimension p ON s.PreferenceId = p.PreferenceId
 JOIN TicketDimension t ON s.TicketId = t.TicketId
 WHERE Processed = 0
-	AND PreferenceType = 'ATL' 
-	AND BallotPosition = 0
+	AND p.PreferenceType = 'ATL' 
+	AND t.BallotPosition = 0
+	AND PreferenceNumber > 0
 	AND PreferenceNumber <= HighestAtlPreference;
 GO
+
+-- Set staging first preference
+
+UPDATE VoteStaging
+SET FirstPreferenceTicketId = COALESCE( n.TicketId, tna.TicketId )
+FROM
+-- SELECT * FROM 
+	VoteStaging s
+	JOIN TicketDimension tna ON tna.ElectionId = s.ElectionId AND tna.Ticket = 'NA'
+	LEFT JOIN NumberingFact n ON n.PreferenceId = s.PreferenceId AND n.PreferenceNumber = 1
+	WHERE s.Processed = 0
+GO
+
+-- Location totals
+
+UPDATE VoteStaging
+	SET TotalStateVotes = Total
+FROM VoteStaging s
+	JOIN ElectionDimension e ON e.ElectionId = s.ElectionId
+	JOIN LocationDimension l ON l.LocationId = s.LocationId
+	JOIN (SELECT e.Election, e.House, 
+			l.[State], 
+			SUM(VoteCount) AS Total
+		FROM VoteStaging s1
+			JOIN ElectionDimension e ON e.ElectionId = s1.ElectionId
+			JOIN LocationDimension l ON l.LocationId = s1.LocationId
+		WHERE Processed = 0
+		GROUP BY e.Election, e.House, l.[State]
+		) x ON x.Election = e.Election 
+			AND x.House = e.House
+			AND x.[State] = l.[State]
+	WHERE Processed = 0;
+GO
+
+UPDATE VoteStaging
+	SET TotalDivisionVotes = Total
+FROM VoteStaging s
+	JOIN ElectionDimension e ON e.ElectionId = s.ElectionId
+	JOIN LocationDimension l ON l.LocationId = s.LocationId
+	JOIN (SELECT e.Election, e.House, 
+			l.[State], l.Division, 
+			SUM(VoteCount) AS Total
+		FROM VoteStaging s1
+			JOIN ElectionDimension e ON e.ElectionId = s1.ElectionId
+			JOIN LocationDimension l ON l.LocationId = s1.LocationId
+		WHERE Processed = 0
+		GROUP BY e.Election, e.House, l.[State], l.Division
+		) x ON x.Election = e.Election 
+			AND x.House = e.House
+			AND x.[State] = l.[State]
+			AND x.Division = l.Division
+	WHERE Processed = 0;
+GO
+
+UPDATE VoteStaging
+	SET TotalLocationVotes = Total
+FROM VoteStaging s
+	JOIN ElectionDimension e ON e.ElectionId = s.ElectionId
+	JOIN LocationDimension l ON l.LocationId = s.LocationId
+	JOIN (SELECT e.Election, e.House, 
+			l.[State], l.Division, l.VoteCollectionPoint,
+			SUM(VoteCount) AS Total
+		FROM VoteStaging s1
+			JOIN ElectionDimension e ON e.ElectionId = s1.ElectionId
+			JOIN LocationDimension l ON l.LocationId = s1.LocationId
+		WHERE Processed = 0
+		GROUP BY e.Election, e.House, l.[State], l.Division, l.VoteCollectionPoint
+		) x ON x.Election = e.Election 
+			AND x.House = e.House
+			AND x.[State] = l.[State]
+			AND x.Division = l.Division
+			AND x.VoteCollectionPoint = l.VoteCollectionPoint
+	WHERE Processed = 0;
+GO
+
 
 /*
 SELECT * FROM VoteFact
 */
-
-UPDATE VoteStaging
-SET FirstPreferenceTicketId = COALESCE( x.FirstPreferenceTicketId, (SELECT TicketId FROM TicketDimension WHERE Ticket = 'NA'))
-FROM VoteStaging s
-	JOIN (SELECT s1.PreferenceId, TicketId AS FirstPreferenceTicketId 
-		FROM VoteStaging s1
-		LEFT JOIN PreferenceFact p ON s1.PreferenceId = p.PreferenceId AND PreferenceNumber = 1
-		WHERE Processed = 0
-	) x ON s.PreferenceId = x.PreferenceId;
-GO
 
 -- Transfer
 
@@ -551,20 +641,26 @@ INSERT INTO VoteFact (
 	LocationId,
 	PreferenceId,
 	FirstPreferenceTicketId,
-	VoteCount
+	VoteCount,
+	StateBasisPoints,
+	DivisionBasisPoints,
+	LocationBasisPoints
 )
 SELECT 
 	ElectionId,
 	LocationId,
 	PreferenceId,
 	FirstPreferenceTicketId,
-	VoteCount
+	VoteCount,
+	CONVERT(float, VoteCount) / TotalStateVotes * 100 * 100 AS StateBasisPoints,
+	CONVERT(float, VoteCount) / TotalDivisionVotes * 100 * 100 AS DivisionBasisPoints,
+	CONVERT(float, VoteCount) / TotalLocationVotes * 100 * 100 AS LocationBasisPoints
 FROM VoteStaging
 WHERE Processed = 0;
 GO
 
 
--- Cleanup / mark processed
+-- Mark processed
 
 UPDATE RawSenateFirstPreferences 
 SET Processed = 1
@@ -578,6 +674,6 @@ UPDATE VoteStaging
 SET Processed = 1
 WHERE Processed = 0;
 
-UPDATE PreferenceStaging 
+UPDATE NumberingStaging 
 SET Processed = 1
 WHERE Processed = 0;
