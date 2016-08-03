@@ -32,7 +32,8 @@ Instructions
  
 * You will need:
   - SenateFirstPrefsByStateByVoteTypeDownload-20499.csv (contains all parties and candidates, in ticket order)
-  -aec-senate-formalpreferences-20499-<STATE>.csv (contains Senate voting data for each state)  
+  - aec-senate-formalpreferences-20499-[STATE].csv (contains Senate voting data for each state)
+  - Sample files from 2016, and for NT, are in the SampleData folder
  
 * Create a database, e.g. 'ElectoralAnalysis' in SQL Server
 
