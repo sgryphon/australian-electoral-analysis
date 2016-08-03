@@ -8,8 +8,8 @@
 param
 (
 	[string] $Election = "2016 Federal",
-	[string] $State = "WA",
-	[string] $FilePath = "..\Data\2016 Federal\aec-senate-formalpreferences-20499-WA.csv",
+	[string] $State = "ACT",
+	[string] $FilePath = "..\Data\2016 Federal\aec-senate-formalpreferences-20499-ACT.csv",
 	[string] $ServerInstance = ".\SQLEXPRESS",
 	[string] $Database = "ElectoralAnalysis"
 )
