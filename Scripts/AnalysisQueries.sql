@@ -1,6 +1,7 @@
 -- Summary first preferences type
 SELECT 
-	e.Election, 
+	e.Election,
+	e.House, 
 	e.Electorate, 
 	p.PreferenceType,
 	SUM(v.VoteCount) AS Votes,
@@ -10,9 +11,10 @@ JOIN ElectionDimension e ON e.ElectionId = v.ElectionId
 JOIN PreferenceDimension p ON p.PreferenceId = v.PreferenceId
 GROUP BY 
 	e.Election, 
+	e.House,
 	e.Electorate, 
 	p.PreferenceType
-ORDER BY Election, Electorate, PreferenceType;
+ORDER BY Election, House, Electorate, PreferenceType;
 
 -- Senate ATL first preferences
 SELECT 
