@@ -118,20 +118,20 @@ WHERE p.PreferenceType = 'ATL' AND e.House = 'Senate'
 GROUP BY e.Election, e.Electorate, t1.PartyKey, n.PreferenceNumber, t.PartyKey
 ORDER BY Election, Electorate, FirstPreferencePartyKey, PreferenceNumber, PartyKey;
 
--- Preference sequence (first three)
+-- Senate ATL preference sequence (first three)
 SELECT
 	Election,
 	Electorate,
 	FirstPreference,
 	CONVERT([decimal](18,0), SUM(StateBasisPoints) 
-		OVER(PARTITION BY Election, Electorate, FirstPreference)) AS FirstPreferenceBasisPoints,
+		OVER(PARTITION BY Election, Electorate, FirstPreference)) AS FirstBasisPoints,
 	SecondPreference,
 	CONVERT([decimal](18,0), SUM(StateBasisPoints) 
-		OVER(PARTITION BY Election, Electorate, FirstPreference, SecondPreference)) AS SecondPreferenceBasisPoints,
+		OVER(PARTITION BY Election, Electorate, FirstPreference, SecondPreference)) AS SecondBasisPoints,
 	(SUM(StateBasisPoints) OVER(PARTITION BY Election, Electorate, FirstPreference, SecondPreference) /
 		SUM(StateBasisPoints) OVER(PARTITION BY Election, Electorate, FirstPreference)) AS SecondFraction,
 	ThirdPreference,
-	CONVERT([decimal](18,0), StateBasisPoints) AS ThirdPreferenceBasisPoints,
+	CONVERT([decimal](18,0), StateBasisPoints) AS ThirdBasisPoints,
 	(StateBasisPoints / SUM(StateBasisPoints) OVER(PARTITION BY Election, Electorate, FirstPreference)) AS ThirdFraction
 FROM( 
 SELECT 

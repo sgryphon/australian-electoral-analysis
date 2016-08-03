@@ -341,12 +341,12 @@ WHERE l.LocationId IS NULL;
 
 UPDATE [VoteStaging]
 	SET LocationId = l.LocationId
-	FROM [VoteStaging] c
+	FROM [VoteStaging] s
 		JOIN LocationDimension l 
-		ON c.[StateAb] = l.[State] 
-			AND c.ElectorateNm = l.Division
-			AND c.VoteCollectionPointNm = l.VoteCollectionPoint
-	WHERE c.Processed = 0;
+		ON s.[StateAb] = l.[State] 
+			AND s.ElectorateNm = l.Division
+			AND s.VoteCollectionPointNm = l.VoteCollectionPoint
+	WHERE s.Processed = 0;
 
 /*
 SELECT * FROM PreferenceDimension
