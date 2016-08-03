@@ -7,7 +7,7 @@
 param
 (
 	[string] $Election = "2016 Federal",
-	[string] $FilePath = "..\Data\2016 Federal\SenateFirstPrefsByStateByVoteTypeDownload-20499.csv",
+	[string] $FilePath = "..\SampleData\SenateFirstPrefsByStateByVoteTypeDownload-20499.csv",
 	[string] $ServerInstance = ".\SQLEXPRESS",
 	[string] $Database = "ElectoralAnalysis"
 )
