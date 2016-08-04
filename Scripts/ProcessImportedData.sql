@@ -387,46 +387,62 @@ SELECT COUNT(*) FROM NumberingStaging
 
 -- Split preferences at commas, match to ticket based on index, take individual numbers
 -- (TAS ~ 1 min, WA ~ 7 min)
-INSERT INTO NumberingStaging (
-	ElectionId,
-	PreferenceId,
-	PreferenceValue,
-	PreferenceNumber,
-	PreferencePosition,
-	TicketId
-)
-SELECT 
-	y.ElectionId,
-	PreferenceId, 
-	PreferenceValue,
-	CASE 
-		WHEN PreferenceValue = '*' THEN -1
-		WHEN PreferenceValue = '/' THEN -2
-		WHEN PreferenceValue = '' THEN -3
-		ELSE CONVERT(smallint, PreferenceValue)
-	END AS PreferenceNumber, 
-	y.PreferencePosition,
-	TicketId
-FROM (SELECT
-        ElectionId,
+-- Batch into 10,000
+DECLARE @counter INT;
+DECLARE @max INT;
+DECLARE @updatedRows INT;
+SET @counter = 0;
+SET @updatedRows = -1;
+SET @max = (SELECT COUNT(*)	FROM PreferenceDimension WHERE PreferenceId NOT IN (SELECT PreferenceId FROM NumberingStaging) AND PreferenceType = '') / 10000;
+PRINT 'Max loops: ' + CONVERT(nvarchar(5), @max);
+WHILE ( (@counter <= @max + 1) AND (@updatedRows <> 0) ) BEGIN
+	PRINT 'Processing ' + CONVERT(varchar(5), @counter);
+
+	INSERT INTO NumberingStaging (
+		ElectionId,
+		PreferenceId,
+		PreferenceValue,
+		PreferenceNumber,
+		PreferencePosition,
+		TicketId
+	)
+	SELECT 
+		y.ElectionId,
 		PreferenceId, 
-		ROW_NUMBER() OVER (PARTITION BY PreferenceId ORDER BY LEN(PreferenceRight) DESC) AS PreferencePosition,
-		LEFT(PreferenceRight, CHARINDEX(',', PreferenceRight + ',') - 1) AS PreferenceValue,
-		PreferenceRight
-	FROM
-		(SELECT ElectionId, PreferenceId, LTRIM(SUBSTRING(p.Preferences, n.Number, 1000)) AS PreferenceRight
-			FROM 
-				(SELECT ElectionId, PreferenceId, Preferences 
-					FROM PreferenceDimension
-					WHERE PreferenceId NOT IN (SELECT PreferenceId FROM NumberingStaging)
-						AND PreferenceType = '') p
-			LEFT OUTER JOIN
-				(SELECT DISTINCT number FROM master.dbo.spt_values WHERE number BETWEEN 1 AND 1000) n
-					ON n.Number <= LEN(',' + p.Preferences) AND SUBSTRING(',' + p.Preferences, n.Number, 1) = ',') x
-	) y
-	LEFT JOIN TicketDimension t
-		ON t.ElectionId = y.ElectionId AND t.PreferencePosition = y.PreferencePosition
-WHERE PreferenceValue <> '';
+		PreferenceValue,
+		CASE 
+			WHEN PreferenceValue = '*' THEN -1
+			WHEN PreferenceValue = '/' THEN -2
+			WHEN PreferenceValue = '' THEN -3
+			ELSE CONVERT(smallint, PreferenceValue)
+		END AS PreferenceNumber, 
+		y.PreferencePosition,
+		TicketId
+	FROM (SELECT
+			ElectionId,
+			PreferenceId, 
+			ROW_NUMBER() OVER (PARTITION BY PreferenceId ORDER BY LEN(PreferenceRight) DESC) AS PreferencePosition,
+			LEFT(PreferenceRight, CHARINDEX(',', PreferenceRight + ',') - 1) AS PreferenceValue,
+			PreferenceRight
+		FROM
+			(SELECT ElectionId, PreferenceId, LTRIM(SUBSTRING(p.Preferences, n.Number, 1000)) AS PreferenceRight
+				FROM 
+					(SELECT TOP 10000 ElectionId, PreferenceId, Preferences 
+						FROM PreferenceDimension
+						WHERE PreferenceId NOT IN (SELECT PreferenceId FROM NumberingStaging)
+							AND PreferenceType = '') p
+				LEFT OUTER JOIN
+					(SELECT DISTINCT number FROM master.dbo.spt_values WHERE number BETWEEN 1 AND 1000) n
+						ON n.Number <= LEN(',' + p.Preferences) AND SUBSTRING(',' + p.Preferences, n.Number, 1) = ',') x
+		) y
+		LEFT JOIN TicketDimension t
+			ON t.ElectionId = y.ElectionId AND t.PreferencePosition = y.PreferencePosition
+	WHERE PreferenceValue <> '';
+
+	SET @updatedRows = (SELECT @@ROWCOUNT);
+
+	SET @counter = @counter + 1;
+END
 GO
 
 -- Check highest BTL sequence
