@@ -60,29 +60,66 @@ GROUP BY
 	 
 -- Senate first preferences by candidate by location type
 SELECT 
-	e.Election, 
-	e.Electorate, 
-	t1.Ticket,
-	t1.PartyKey, 
-	t1.BallotPosition,
-	t1.CandidateDetails,
-	l.LocationType,
-	SUM(v.VoteCount) AS Votes,
-	CONVERT([decimal](18,0), SUM(v.StateBasisPoints)) AS BasisPoints
-FROM VoteFact v
-JOIN ElectionDimension e ON e.ElectionId = v.ElectionId
-JOIN PreferenceDimension p ON p.PreferenceId = v.PreferenceId
-JOIN LocationDimension l ON l.LocationId = v.LocationId
-JOIN TicketDimension t1 ON t1.TicketId = v.FirstPreferenceTicketId
-WHERE e.House = 'Senate'
+	Election,
+	Electorate,
+	Ticket, 
+	PartyKey,
+	BallotPosition,
+	CandidateDetails,
+	MAX([Ordinary]) AS Ordinary, 
+	MAX([OrdinaryBPS]) AS OrdinaryBPS, 
+	MAX([Absent]) AS [Absent], 
+	MAX([AbsentBPS]) AS AbsentBPS, 
+	MAX([Provisional]) AS Provisional, 
+	MAX([ProvisionalBPS]) AS ProvisionalBPS, 
+	MAX([PrePoll]) AS PrePoll, 
+	MAX([PrePollBPS]) AS PrePollBPS, 
+	MAX([Postal]) AS Postal,
+	MAX([PostalBPS]) AS PostalBPS
+FROM 
+	(SELECT 
+		e.Election, 
+		e.Electorate, 
+		t1.Ticket,
+		t1.PartyKey, 
+		t1.BallotPosition,
+		t1.CandidateDetails,
+		l.LocationType,
+		l.LocationType + 'BPS' AS LocationType2,
+		SUM(v.VoteCount) AS Votes,
+		CONVERT([decimal](18,0), SUM(v.StateBasisPoints)) AS BasisPoints
+	FROM VoteFact v
+	JOIN ElectionDimension e ON e.ElectionId = v.ElectionId
+	JOIN PreferenceDimension p ON p.PreferenceId = v.PreferenceId
+	JOIN LocationDimension l ON l.LocationId = v.LocationId
+	JOIN TicketDimension t1 ON t1.TicketId = v.FirstPreferenceTicketId
+	WHERE e.House = 'Senate'
+	GROUP BY 
+		e.Election, 
+		e.Electorate, 
+		t1.Ticket,
+		t1.PartyKey, 
+		t1.BallotPosition,
+		t1.CandidateDetails,
+		l.LocationType
+	) y
+PIVOT (
+	SUM(Votes) 
+		FOR LocationType IN ([Ordinary], [Absent], [Provisional], [PrePoll], [Postal])
+) AS x
+PIVOT (
+	SUM(BasisPoints)
+		FOR LocationType2 IN ([OrdinaryBPS], [AbsentBPS], [ProvisionalBPS], [PrePollBPS], [PostalBPS])
+) AS x2
 GROUP BY 
-	e.Election, 
-	e.Electorate, 
-	t1.Ticket,
-	t1.PartyKey, 
-	t1.BallotPosition,
-	t1.CandidateDetails,
-	l.LocationType
+	Election, 
+	Electorate, 
+	Ticket,
+	PartyKey, 
+	BallotPosition,
+	CandidateDetails
+ORDER BY Election, Electorate, Ticket, BallotPosition;
+GO
 
 -- Senate ATL preference distribution by party
 SELECT 
