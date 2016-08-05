@@ -25,6 +25,9 @@ Requirements / setup
 * SQL Server Express, or access to other version of SQL Server
 * Scripts use a combination of PowerShell and SQL
 
+Note that with SQL Server Express there is a maximum database size of 10 GB,
+so some of the larger states may need to be loaded into a separate database.
+
 Instructions
 ------------
 
@@ -61,5 +64,20 @@ Instructions
   - The result, e.g. "Senate ATL preference distribution by first preference and party", can then be loaded into something like Excel, and further analysed in a pivot table by various dimensions, or graphed, etc.
   - Currently these only do high level analysis, e.g. of preference flows.
   - The data has enough detail to analyse down to individual vote collection point (polling place).
+
+Note: One of the sample analysis scripts does a pivot, but the support is limited
+in SQL Server.
+
+Generally I will just use the query to extract the data with the columns I want (for multiple tables), e.g. "Senate ATL preference distribution by first preference and party", and then put that into Excel. 
+
+The pivot table support in Excel is much better, and you can then pivot on different ways to get various tables. Often I will cut and paste the resulting table into another tab, so that I can compare different slices, e.g. compare preference flows to total votes and calculate a percent (as you can't do both in one pivot).
   
   
+To do / roadmap
+---------------
+
+* Script to import past elections (different format), for baseline comparison
+
+* Script to import Represenatives data, for comparison
+
+
