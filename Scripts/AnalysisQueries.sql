@@ -201,5 +201,46 @@ GROUP BY
 ORDER BY Election, Electorate, FirstPreference, SecondPreference, ThirdPreference;
 
 
+-- Distribution of Senate highest preference, by State
+SELECT 
+	e.Election,
+	p.PreferenceType,
+	e.Electorate,
+	CASE
+		WHEN p.PreferenceType = 'BTL' THEN p.HighestBtlPreference
+		ELSE p.HighestAtlPreference
+	END AS HighestPreference,
+	SUM(VoteCount) AS Votes,
+	CONVERT([decimal](18,0), SUM(StateBasisPoints)) AS BasisPoints
+FROM VoteFact v
+	JOIN ElectionDimension e ON e.ElectionId = v.ElectionId
+	JOIN PreferenceDimension p ON p.PreferenceId = v.PreferenceId
+WHERE e.House = 'Senate'
+GROUP BY 
+	e.Election, 
+	p.PreferenceType, 
+	e.Electorate, 
+	CASE
+		WHEN p.PreferenceType = 'BTL' THEN p.HighestBtlPreference
+		ELSE p.HighestAtlPreference
+	END
+ORDER BY Election, PreferenceType, Electorate, HighestPreference;
+
+--
+SELECT 
+	Election,
+	Electorate,
+	CONVERT([decimal](18,0), SUM(StateBasisPoints)) AS BasisPoints
+FROM VoteFact v
+	JOIN ElectionDimension e ON e.ElectionId = v.ElectionId
+	JOIN PreferenceDimension p ON p.PreferenceId = v.PreferenceId
+WHERE p.PreferenceType = 'ATL' AND e.House = 'Senate'
+	AND p.PreferenceId IN ( SELECT PreferenceId 
+			FROM NumberingFact n
+			JOIN TicketDimension t ON t.TicketId = n.TicketId
+			WHERE t.PartyKey IN ('LNP', 'ALP', 'GRN')
+			AND n.PreferenceNumber <= 6)
+GROUP BY Election, Electorate
+ORDER BY Election, Electorate;
 
 
