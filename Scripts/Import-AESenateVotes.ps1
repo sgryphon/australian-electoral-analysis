@@ -51,7 +51,7 @@ Write-Verbose "Existing database has $($startRecords) records for election/state
 
 $data = Import-Csv $dataFile
 $total = $data.Count
-Write-Verbose "Importing $total votes from data file"
+Write-Verbose "Importing $total rows from data file"
 
 $skipFlag = $false
 if ($Skip) {
@@ -133,8 +133,8 @@ if ($batchDataSelect) {
 
 $result = Invoke-SqlCmd -ServerInstance $ServerInstance -Database $Database -Query "SELECT COUNT(*) AS CountRecords FROM [RawSenateFormalPreferences] WHERE Election = '$escapedElection' AND StateAb = '$escapedState';"
 Write-Verbose "Result total $($result.CountRecords) records"
-Write-Verbsoe "Skipped header lines: $skippedHeader"
-Write-Verbsoe "Skipped records: $skippedRecords"
+Write-Verbose "Skipped header lines: $skippedHeader"
+Write-Verbose "Skipped records: $skippedRecords"
 	
 $endTime = [datetimeoffset]::Now
 Write-Verbose "Import $State finish $($endTime.ToString("yyyy-MM-dd HH:mm:ss"))"
