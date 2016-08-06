@@ -411,8 +411,8 @@ WHILE ( (@counter <= @max + 1) AND (@updatedRows <> 0) ) BEGIN
 		PreferenceId, 
 		PreferenceValue,
 		CASE 
-			WHEN PreferenceValue = '*' THEN -1
-			WHEN PreferenceValue = '/' THEN -2
+			WHEN PreferenceValue = '*' THEN 1
+			WHEN PreferenceValue = '/' THEN 1
 			WHEN PreferenceValue = '' THEN -3
 			ELSE CONVERT(smallint, PreferenceValue)
 		END AS PreferenceNumber, 
