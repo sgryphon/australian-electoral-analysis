@@ -243,4 +243,64 @@ WHERE p.PreferenceType = 'ATL' AND e.House = 'Senate'
 GROUP BY Election, Electorate
 ORDER BY Election, Electorate;
 
+-- QLD Senate ATL preference distribution by party and location
+SELECT 
+	e.Election,
+	e.Electorate,
+	l.Division,
+	l.LocationType,
+	l.VoteCollectionPoint,
+	n.PreferenceNumber,
+	t.PartyKey,
+	SUM(VoteCount) AS Votes,
+	CONVERT([decimal](18,0), SUM(StateBasisPoints)) AS StateBasisPoints,
+	CONVERT([decimal](18,0), SUM(DivisionBasisPoints)) AS DivisionBasisPoints,
+	CONVERT([decimal](18,0), SUM(LocationBasisPoints)) AS LocationBasisPoints
+FROM VoteFact v
+	JOIN ElectionDimension e ON e.ElectionId = v.ElectionId
+	JOIN LocationDimension l ON l.LocationId = v.LocationId
+	JOIN PreferenceDimension p ON p.PreferenceId = v.PreferenceId
+	JOIN NumberingFact n ON n.PreferenceId = p.PreferenceId
+	JOIN TicketDimension t ON t.TicketId = n.TicketId
+WHERE p.PreferenceType = 'ATL' 
+	AND e.House = 'Senate' 
+	AND e.Electorate = 'QLD'
+	AND n.PreferenceNumber <= 8
+GROUP BY 
+	e.Election, e.Electorate, 
+	l.Division, l.LocationType, l.VoteCollectionPoint, 
+	n.PreferenceNumber, 
+	t.PartyKey;
 
+-- Ryan (QLD) Senate ATL preference distribution by first preference, by party and location
+SELECT 
+	e.Election,
+	e.Electorate,
+	l.Division,
+	l.LocationType,
+	l.VoteCollectionPoint,
+	t1.PartyKey AS FirstPreferencePartyKey,
+	n.PreferenceNumber,
+	t.PartyKey,
+	SUM(VoteCount) AS Votes,
+	CONVERT([decimal](18,0), SUM(StateBasisPoints)) AS StateBasisPoints,
+	CONVERT([decimal](18,0), SUM(DivisionBasisPoints)) AS DivisionBasisPoints,
+	CONVERT([decimal](18,0), SUM(LocationBasisPoints)) AS LocationBasisPoints
+FROM VoteFact v
+	JOIN ElectionDimension e ON e.ElectionId = v.ElectionId
+	JOIN LocationDimension l ON l.LocationId = v.LocationId
+	JOIN TicketDimension t1 ON t1.TicketId = v.FirstPreferenceTicketId
+	JOIN PreferenceDimension p ON p.PreferenceId = v.PreferenceId
+	JOIN NumberingFact n ON n.PreferenceId = p.PreferenceId
+	JOIN TicketDimension t ON t.TicketId = n.TicketId
+WHERE p.PreferenceType = 'ATL' 
+	AND e.House = 'Senate' 
+	AND e.Electorate = 'QLD'
+	and l.Division = 'Ryan'
+	AND n.PreferenceNumber <= 8
+GROUP BY 
+	e.Election, e.Electorate, 
+	l.Division, l.LocationType, l.VoteCollectionPoint,
+	t1.PartyKey, 
+	n.PreferenceNumber, 
+	t.PartyKey;

@@ -59,6 +59,25 @@ CREATE TABLE [dbo].[RawSenateFormalPreferences] (
 );
 GO
 
+CREATE TABLE [dbo].[RawSenateFirstPreferencesLegacy] (
+	[Id] [int] IDENTITY(1,1) NOT NULL,
+		CONSTRAINT [PK_RawSenateFirstPreferencesLegacy] PRIMARY KEY CLUSTERED ([Id]),
+	[Election] [nvarchar](50) NULL,
+	[StateAb] [nvarchar](3) NULL,
+	[DivisionID] [int] NULL,
+	[DivisionNm] [nvarchar](100) NULL,
+	[PollingPlaceID] [int] NULL,
+	[PollingPlaceNm] [nvarchar](200) NULL,
+	[Ticket] [nvarchar](2) NULL,
+	[CandidateID] [int] NULL,
+	[BallotPosition] [smallint] NULL,
+	[CandidateDetails] [nvarchar](200) NULL,
+	[PartyNm] [nvarchar](200) NULL,
+	[OrdinaryVotes] [int] NULL,
+	[Processed] [bit] NOT NULL DEFAULT(0)
+);
+GO
+
 CREATE TABLE [dbo].[PartyLookup] (
 	[Id] [int] IDENTITY(1,1) NOT NULL,
 		CONSTRAINT [PK_PartyLookup] PRIMARY KEY CLUSTERED ([Id]),
