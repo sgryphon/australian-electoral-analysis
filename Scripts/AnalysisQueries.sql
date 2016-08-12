@@ -28,7 +28,7 @@ FROM VoteFact v
 JOIN ElectionDimension e ON e.ElectionId = v.ElectionId
 JOIN PreferenceDimension p ON p.PreferenceId = v.PreferenceId
 JOIN TicketDimension t1 ON t1.TicketId = v.FirstPreferenceTicketId
-WHERE p.PreferenceType = 'ATL' AND e.House = 'Senate'
+WHERE (p.PreferenceType = 'ATL' OR p.PreferenceType = '*NA') AND e.House = 'Senate'
 GROUP BY 
 	e.Election, 
 	e.Electorate, 

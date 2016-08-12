@@ -1,6 +1,7 @@
 /*
 SELECT TOP 100 * FROM RawSenateFirstPreferences
 SELECT TOP 100 * FROM RawSenateFormalPreferences
+SELECT TOP 100 * FROM RawSenateFirstPreferencesLegacy
 
 UPDATE RawSenateFirstPreferences SET Processed = 0;
 UPDATE RawSenateFormalPreferences SET Processed = 0;
@@ -275,6 +276,33 @@ SELECT
 	GROUP BY Election, StateAb, Preferences, ElectorateNm, VoteCollectionPointNm;
 GO
 
+INSERT INTO [VoteStaging] (
+	Election, 
+	StateAb, 
+	ElectorateNm, 
+	VoteCollectionPointNm, 
+	FirstPreferenceTicketId, 
+	VoteCount
+)
+SELECT 
+	r.Election, 
+	StateAb, 
+	DivisionNm AS ElectorateNm, 
+	PollingPlaceNm AS VoteCollectionPointNm, 
+	t.TicketId AS FirstPreferenceTicketId, 
+	OrdinaryVotes AS VoteCount
+	FROM RawSenateFirstPreferencesLegacy r
+	JOIN ElectionDimension e 
+		ON e.Election = r.Election 
+		AND e.House = 'Senate' 
+		AND e.Electorate = r.StateAb 
+	JOIN TicketDimension t 
+		ON t.ElectionId = e.ElectionId 
+		AND t.Ticket = r.Ticket 
+		AND t.BallotPosition = r.BallotPosition
+	WHERE Processed = 0
+GO
+
 UPDATE [VoteStaging]
 	SET ElectionId = e.ElectionId
 	FROM [VoteStaging] s
@@ -323,6 +351,7 @@ SELECT
 	END AS LocationType,
 	CASE 
 		WHEN c.VoteCollectionPoint LIKE 'Special Hospital Team %' THEN 'Special'
+		WHEN c.VoteCollectionPoint LIKE 'Remote Mobile Team %' THEN 'Remote'
 		WHEN c.VoteCollectionPoint LIKE '%PPVC%' THEN 'PPVC'
 		WHEN c.VoteCollectionPoint LIKE '%(PREPOLL)%' THEN 'PREPOLL'
 		ELSE ''
@@ -348,9 +377,27 @@ UPDATE [VoteStaging]
 			AND s.VoteCollectionPointNm = l.VoteCollectionPoint
 	WHERE s.Processed = 0;
 
+
 /*
 SELECT * FROM PreferenceDimension
 */
+
+INSERT INTO PreferenceDimension (
+	ElectionId,
+	Preferences,
+	PreferenceType,
+	PreferenceList,
+	HowToVote
+)
+SELECT DISTINCT
+	e.ElectionId,
+	'' AS Preferences,
+	'*NA' AS PreferenceType,
+	'' AS PreferenceList,
+	'' AS HowToVote
+FROM ElectionDimension e
+	LEFT JOIN PreferenceDimension p ON p.ElectionId = e.ElectionId AND p.PreferenceType = '*NA'
+WHERE p.ElectionId IS NULL;
 
 INSERT INTO PreferenceDimension (
 	ElectionId,
@@ -369,7 +416,8 @@ FROM (SELECT DISTINCT
 		ElectionId,
 		Preferences
 	FROM [VoteStaging]
-	WHERE Processed = 0) x;
+	WHERE Preferences IS NOT NULL
+		AND Processed = 0) x;
 GO
 
 UPDATE [VoteStaging]
@@ -378,7 +426,17 @@ UPDATE [VoteStaging]
 		JOIN PreferenceDimension p 
 		ON s.ElectionId = p.ElectionId
 			AND s.Preferences = p.Preferences
-	WHERE Processed = 0;
+	WHERE s.Preferences IS NOT NULL 
+		AND Processed = 0;
+
+UPDATE [VoteStaging]
+	SET PreferenceId = p.PreferenceId
+	FROM [VoteStaging] s
+		JOIN PreferenceDimension p 
+		ON s.ElectionId = p.ElectionId
+			AND p.PreferenceType = '*NA'
+	WHERE s.Preferences IS NULL 
+		AND Processed = 0;
 
 /*
 SELECT * FROM NumberingStaging
@@ -580,7 +638,8 @@ FROM
 	VoteStaging s
 	JOIN TicketDimension tna ON tna.ElectionId = s.ElectionId AND tna.Ticket = 'NA'
 	LEFT JOIN NumberingFact n ON n.PreferenceId = s.PreferenceId AND n.PreferenceNumber = 1
-	WHERE s.Processed = 0
+	WHERE s.FirstPreferenceTicketId IS NULL 
+		AND s.Processed = 0
 GO
 
 -- Location totals
@@ -670,7 +729,10 @@ SELECT
 	VoteCount,
 	CONVERT(float, VoteCount) / TotalStateVotes * 100 * 100 AS StateBasisPoints,
 	CONVERT(float, VoteCount) / TotalDivisionVotes * 100 * 100 AS DivisionBasisPoints,
-	CONVERT(float, VoteCount) / TotalLocationVotes * 100 * 100 AS LocationBasisPoints
+	CASE 
+		WHEN TotalLocationVotes = 0 THEN 0
+		ELSE CONVERT(float, VoteCount) / TotalLocationVotes * 100 * 100 
+	END AS LocationBasisPoints
 FROM VoteStaging
 WHERE Processed = 0;
 GO
@@ -679,6 +741,10 @@ GO
 -- Mark processed
 
 UPDATE RawSenateFirstPreferences 
+SET Processed = 1
+WHERE Processed = 0;
+
+UPDATE RawSenateFirstPreferencesLegacy 
 SET Processed = 1
 WHERE Processed = 0;
 

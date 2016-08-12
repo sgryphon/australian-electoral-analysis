@@ -202,13 +202,13 @@ CREATE TABLE [dbo].[VoteFact](
 	[LocationId] [int] NOT NULL,
 		CONSTRAINT [FK_VoteFact_LocationDimension] FOREIGN KEY([LocationId])
 			REFERENCES [dbo].[LocationDimension] ([LocationId]),
-		CONSTRAINT [PK_VoteFact] PRIMARY KEY CLUSTERED ([PreferenceId], [LocationId]),
 	[ElectionId] [int] NOT NULL,
 		CONSTRAINT [FK_VoteFact_ElectionDimension] FOREIGN KEY([ElectionId])
 			REFERENCES [dbo].[ElectionDimension] ([ElectionId]),
 	[FirstPreferenceTicketId] [int] NOT NULL,
 		CONSTRAINT [FK_VoteFact_TicketDimension] FOREIGN KEY([FirstPreferenceTicketId])
 			REFERENCES [dbo].[TicketDimension] ([TicketId]),
+		CONSTRAINT [PK_VoteFact] PRIMARY KEY CLUSTERED ([LocationId], [FirstPreferenceTicketId], [PreferenceId]),
 	[VoteCount] [int] NOT NULL,
 	[LocationBasisPoints] [float] NOT NULL,
 	[DivisionBasisPoints] [float] NOT NULL,
