@@ -2,13 +2,37 @@
 	.Synopsis
 		Imports AEC legacy (2013 and before) Senate first preference votes.
 
+	.Description
+		The Senate voting system changed at the Australian 2016 Federal election.
+		This script supports the old Senate data format, used prior to 2016.
+		
+	.Parameter Election
+		Name to identify the election, to allow data from multiple elections to be loaded.
+	
+	.Parameter State
+		Which Australian State the data file is for, e.g. 'NT'.
+		
+	.Parameter FilePath
+		Path to the data file. 
+		The file name should be something like 'SenateStateFirstPrefsByPollingPlaceDownload-17496-NT.csv'.
+	
+	.Parameter ServerInstance
+		SQL Server to run the script on. Default is local SQLEXPRESS.
+
+	.Parameter Database
+		Name of the database to run the script against. Default is 'ElectoralAnalysis'.
+
+	.Example
+	    .\Import-AESenateVotesLegacy.ps1 -Election "2013 Federal" -State "NT" `
+			-FilePath "..\SampleData\SenateStateFirstPrefsByPollingPlaceDownload-17496-NT.csv"
+		
 #>
 [CmdletBinding(SupportsShouldProcess=$false)]
 param
 (
-	[string] $Election = "2013 Federal",
-	[string] $State = "NT",
-	[string] $FilePath = "..\SampleData\SenateStateFirstPrefsByPollingPlaceDownload-17496-NT.csv",
+	[Parameter(Mandatory=$true)] [string] $Election,
+	[Parameter(Mandatory=$true)] [string] $State,
+	[Parameter(Mandatory=$true)] [string] $FilePath,
 	[string] $ServerInstance = ".\SQLEXPRESS",
 	[string] $Database = "ElectoralAnalysis",
 	[int] $Skip = 0
@@ -56,9 +80,10 @@ $count = 0
 $skippedHeader = 0
 $skippedRecords = 0
 $batchDataSelect = ""
-$batchSize = 1000
+$batchSize = 100
 Write-Verbose "Batch size: $batchSize"
-Write-Progress -Activity "Importing $State" -PercentComplete ($count * 100 / $total)
+$progressActivity = "Importing Senate $Election - $State"
+Write-Progress -Activity $progressActivity -PercentComplete ($count * 100 / $total)
 foreach ($row in $data) {
     $count++;
 	if ($count -le 1) { 
@@ -106,7 +131,6 @@ foreach ($row in $data) {
 	,$($row.OrdinaryVotes) 
 "
 	if (($count % $batchSize) -eq 0) {
-		Write-Progress -Activity "Importing $State" -PercentComplete ($count * 100 / $total)
 		$query = "INSERT INTO [RawSenateFirstPreferencesLegacy] (
 		Election 	
 		,StateAb 
@@ -126,11 +150,10 @@ foreach ($row in $data) {
 #$dummy = Read-Host		
 		Invoke-SqlCmd -ServerInstance $ServerInstance -Database $Database -Query $query
 		$batchDataSelect = ""
-		Write-Progress -Activity "Importing $State" -PercentComplete ($count * 100 / $total)
+		Write-Progress -Activity $progressActivity -PercentComplete ($count * 100 / $total)
 	}
 }
 if ($batchDataSelect) {
-	Write-Progress -Activity "Importing $State" -PercentComplete ($count * 100 / $total)
 	$query = "INSERT INTO [RawSenateFirstPreferencesLegacy] (
 	Election 	
 	,StateAb 
@@ -150,8 +173,9 @@ if ($batchDataSelect) {
 
 	Invoke-SqlCmd -ServerInstance $ServerInstance -Database $Database -Query $query
 	$batchDataSelect = ""
-	Write-Progress -Activity "Importing $State" -PercentComplete ($count * 100 / $total)
+	Write-Progress -Activity $progressActivity -PercentComplete ($count * 100 / $total)
 }
+Write-Progress -Activity $progressActivity -Completed
 
 $result = Invoke-SqlCmd -ServerInstance $ServerInstance -Database $Database -Query "SELECT COUNT(*) AS CountRecords FROM [RawSenateFirstPreferencesLegacy] WHERE Election = '$escapedElection' AND StateAb = '$escapedState';"
 Write-Verbose "Result total $($result.CountRecords) records"

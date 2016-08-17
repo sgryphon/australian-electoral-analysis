@@ -2,12 +2,33 @@
 	.Synopsis
 		Imports AEC candidate information for the Senate.
 
+	.Parameter Election
+		Name to identify the election, to allow data from multiple elections to be loaded.
+		
+	.Parameter FilePath
+		Path to the data file. 
+		The file name should be something like 'SenateFirstPrefsByStateByVoteTypeDownload-20499.csv'.
+	
+	.Parameter ServerInstance
+		SQL Server to run the script on. Default is local SQLEXPRESS.
+
+	.Parameter Database
+		Name of the database to run the script against. Default is 'ElectoralAnalysis'.
+
+	.Example
+	    .\Import-AESenateTicket.ps1 -Election "2016 Federal" `
+			-FilePath "..\SampleData\SenateFirstPrefsByStateByVoteTypeDownload-20499.csv"
+
+	.Example
+	    .\Import-AESenateTicket.ps1 -Election "2013 Federal" `
+			-FilePath "..\SampleData\SenateFirstPrefsByStateByVoteTypeDownload-17496.csv"
+		
 #>
 [CmdletBinding(SupportsShouldProcess=$false)]
 param
 (
-	[string] $Election = "2016 Federal",
-	[string] $FilePath = "..\SampleData\SenateFirstPrefsByStateByVoteTypeDownload-20499.csv",
+	[Parameter(Mandatory=$true)] [string] $Election,
+	[Parameter(Mandatory=$true)] [string] $FilePath,
 	[string] $ServerInstance = ".\SQLEXPRESS",
 	[string] $Database = "ElectoralAnalysis"
 )

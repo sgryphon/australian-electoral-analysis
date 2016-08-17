@@ -4,8 +4,7 @@ SELECT
 	e.House, 
 	e.Electorate, 
 	p.PreferenceType,
-	SUM(v.VoteCount) AS Votes,
-	CONVERT([decimal](18,0), SUM(v.StateBasisPoints)) AS StateBasisPoints
+	SUM(v.VoteCount) AS Votes
 FROM VoteFact v
 JOIN ElectionDimension e ON e.ElectionId = v.ElectionId
 JOIN PreferenceDimension p ON p.PreferenceId = v.PreferenceId
