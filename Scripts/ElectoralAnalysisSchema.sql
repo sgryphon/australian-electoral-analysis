@@ -172,6 +172,7 @@ CREATE TABLE [dbo].[ElectionDimension] (
 		CONSTRAINT [PK_ElectionDimension] PRIMARY KEY CLUSTERED ([ElectionId]),
 	[Election] [nvarchar](50) NOT NULL,
 	[House] [nvarchar](20) NOT NULL,
+	[State] [nvarchar](20) NOT NULL,
 	[Electorate] [nvarchar](100) NOT NULL,
 	[Year] [int] NOT NULL,
 	[Date] [date] NOT NULL,

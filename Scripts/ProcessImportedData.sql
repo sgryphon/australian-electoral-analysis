@@ -137,6 +137,10 @@ IF NOT EXISTS (SELECT * FROM PartyLookup) BEGIN
 	INSERT INTO [PartyLookup] (PartyName, PartyKey, PartyShort) VALUES ('The Arts Party', 'ART', 'Arts');
 	INSERT INTO [PartyLookup] (PartyName, PartyKey, PartyShort) VALUES ('Veterans Party', 'VET', 'Veterans');
 	INSERT INTO [PartyLookup] (PartyName, PartyKey, PartyShort) VALUES ('VOTEFLUX.ORG | Upgrade Democracy!', 'VFL', 'Voteflux');
+
+	INSERT INTO [PartyLookup] (PartyName, PartyKey, PartyShort) VALUES ('Consumer Rights & No-Tolls', 'CRNT', 'Consumer');
+	INSERT INTO [PartyLookup] (PartyName, PartyKey, PartyShort) VALUES ('Country Labor', 'ALP', 'Labor');
+	INSERT INTO [PartyLookup] (PartyName, PartyKey, PartyShort) VALUES ('Outdoor Recreation Party (Stop The Greens)', 'ODR', 'Outdoor');
 END
 
 /*
@@ -145,6 +149,11 @@ SELECT 'INSERT INTO [PartyLookup] (PartyName, PartyKey, PartyShort) VALUES (''' 
 FROM (SELECT DISTINCT PartyName 
 	FROM RawSenateFirstPreferences
 	WHERE PartyName NOT IN (SELECT PartyName FROM PartyLookup)) p;
+
+SELECT 'INSERT INTO [PartyLookup] (PartyName, PartyKey, PartyShort) VALUES (''' + PartyNm + ''', ''' + PartyAb + ''', '''');' AS SQL
+FROM (SELECT DISTINCT PartyNm, PartyAb 
+	FROM RawRepresentativesCandidates
+	WHERE PartyNm NOT IN (SELECT PartyName FROM PartyLookup)) p;
 */
 
 /*
@@ -153,13 +162,15 @@ SELECT * FROM ElectionDimension
 
 IF NOT EXISTS (SELECT * FROM ElectionDimension WHERE Election = 'None') BEGIN
 	INSERT INTO [ElectionDimension] (
-		Election,
-		House,
-		Electorate,
-		Year,
-		Date,
-		Type
+		[Election],
+		[House],
+		[State],
+		[Electorate],
+		[Year],
+		[Date],
+		[Type]
 	) VALUES (
+		'None',
 		'None',
 		'None',
 		'None',
@@ -170,16 +181,18 @@ IF NOT EXISTS (SELECT * FROM ElectionDimension WHERE Election = 'None') BEGIN
 END
 
 INSERT INTO [ElectionDimension] (
-		Election,
-		House,
-		Electorate,
-		Year,
-		Date,
-		Type
+		[Election],
+		[House],
+		[State],
+		[Electorate],
+		[Year],
+		[Date],
+		[Type]
 	) 
 SELECT DISTINCT r.Election, 
-	'Senate' AS House, 
-	r.StateAb AS Electorate,
+	'Senate' AS [House], 
+	r.StateAb AS [State],
+	r.StateAb AS [Electorate],
 	0 AS [Year],
 	'19000101' AS [Date],
 	'' AS [Type]
@@ -190,9 +203,37 @@ FROM RawSenateFirstPreferences r
 			AND e.Electorate = r.StateAb
 WHERE Processed = 0 AND e.ElectionId IS NULL;
 
+INSERT INTO [ElectionDimension] (
+		[Election],
+		[House],
+		[State],
+		[Electorate],
+		[Year],
+		[Date],
+		[Type]
+	) 
+SELECT DISTINCT r.Election, 
+	'Reps' AS House, 
+	r.StateAb AS [State],
+	r.DivisionNm AS Electorate,
+	0 AS [Year],
+	'19000101' AS [Date],
+	'' AS [Type]
+FROM RawRepresentativesCandidates r
+	LEFT JOIN ElectionDimension e 
+		ON e.Election = r.Election
+			AND e.House = 'Reps'
+			AND e.Electorate = r.DivisionNm
+WHERE Processed = 0 AND e.ElectionId IS NULL;
+
 UPDATE ElectionDimension
 SET [Year] = 2016, [Date] = '20160702', [Type] = 'Double Dissolution'
 WHERE [Type] = '' AND Election = '2016 Federal';
+GO
+
+UPDATE ElectionDimension
+SET [Year] = 2013, [Date] = '20130907', [Type] = 'Regular'
+WHERE [Type] = '' AND Election = '2013 Federal';
 GO
 
 /*
@@ -252,6 +293,42 @@ FROM RawSenateFirstPreferences r
 		ON e.Election = r.Election AND e.House = 'Senate' AND e.Electorate = r.StateAb
 WHERE BallotPosition < 9000 AND Processed = 0;
 
+INSERT INTO TicketDimension (
+	ElectionId,
+	Ticket,
+	BallotPosition,
+	CandidateDetails,
+	PartyName,
+	PartyKey,
+	PartyShort,
+	PreferencePosition
+)
+SELECT ElectionId, 
+	'' AS Ticket, 
+	-1 AS BallotPosition, 
+	r.Surname + ', ' + r.GivenNm AS CandidateDetails, 
+	r.PartyNm,
+	l.PartyKey AS PartyKey,
+	l.PartyShort AS PartyShort,
+	-1 AS PreferencePosition
+FROM RawRepresentativesCandidates r
+	LEFT JOIN PartyLookup l ON r.PartyNm = l.PartyName
+	LEFT JOIN ElectionDimension e 
+		ON e.Election = r.Election AND e.House = 'Reps' AND e.Electorate = r.DivisionNm
+WHERE Processed = 0;
+
+UPDATE TicketDimension
+SET BallotPosition = r.BallotPosition, PreferencePosition = r.BallotPosition
+--SELECT * 
+FROM TicketDimension t
+	JOIN ElectionDimension e ON e.ElectionId = t.ElectionId
+	JOIN (SELECT DISTINCT Election, DivisionNm, Surname, GivenNm, BallotPosition
+				FROM RawRepresentativesFirstPreferences 
+				WHERE Processed = 0) r
+		ON r.Election = e.Election AND r.DivisionNm = e.Electorate AND r.Surname + ', ' + r.GivenNm = t.CandidateDetails
+	WHERE e.House = 'Reps' AND t.BallotPosition = -1;
+GO
+
 /*
 SELECT * FROM [VoteStaging]
 */
@@ -309,6 +386,35 @@ UPDATE [VoteStaging]
 	JOIN ElectionDimension e 
 		ON e.Election = s.Election AND e.House = 'Senate' AND e.Electorate = s.StateAb
 	WHERE s.Processed = 0;
+
+-- Reps
+INSERT INTO [VoteStaging] (
+	Election, 
+	StateAb, 
+	ElectorateNm, 
+	VoteCollectionPointNm, 
+	VoteCount,
+	ElectionId,
+	FirstPreferenceTicketId
+)
+SELECT 
+	r.Election, 
+	StateAb, 
+	DivisionNm AS ElectorateNm, 
+	PollingPlace AS VoteCollectionPointNm, 
+	OrdinaryVotes AS VoteCount,
+	e.ElectionId,
+	t.TicketId AS FirstPreferenceTicketId
+	FROM RawRepresentativesFirstPreferences r
+	LEFT JOIN ElectionDimension e 
+		ON e.Election = r.Election 
+		AND e.House = 'Reps' 
+		AND e.Electorate = r.DivisionNm 
+	LEFT JOIN TicketDimension t 
+		ON t.ElectionId = e.ElectionId 
+		AND (t.BallotPosition = r.BallotPosition OR (t.BallotPosition = 0 AND r.BallotPosition = 999))
+	WHERE Processed = 0;
+GO
  
 /*
 SELECT * FROM LocationDimension
@@ -431,6 +537,7 @@ UPDATE [VoteStaging]
 
 UPDATE [VoteStaging]
 	SET PreferenceId = p.PreferenceId
+	-- SELECT *
 	FROM [VoteStaging] s
 		JOIN PreferenceDimension p 
 		ON s.ElectionId = p.ElectionId
@@ -749,6 +856,14 @@ SET Processed = 1
 WHERE Processed = 0;
 
 UPDATE RawSenateFormalPreferences 
+SET Processed = 1
+WHERE Processed = 0;
+
+UPDATE RawRepresentativesCandidates 
+SET Processed = 1
+WHERE Processed = 0;
+
+UPDATE RawRepresentativesFirstPreferences 
 SET Processed = 1
 WHERE Processed = 0;
 
