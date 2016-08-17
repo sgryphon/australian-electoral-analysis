@@ -1,14 +1,14 @@
 <#
 	.Synopsis
-		Imports AEC legacy (2013 and before) Senate first preference votes.
+		Imports AEC House of Representatives first preference votes.
 
 #>
 [CmdletBinding(SupportsShouldProcess=$false)]
 param
 (
-	[string] $Election = "2013 Federal",
+	[string] $Election = "2016 Federal",
 	[string] $State = "NT",
-	[string] $FilePath = "..\SampleData\SenateStateFirstPrefsByPollingPlaceDownload-17496-NT.csv",
+	[string] $FilePath = "..\SampleData\HouseStateFirstPrefsByPollingPlaceDownload-20499-NT.csv",
 	[string] $ServerInstance = ".\SQLEXPRESS",
 	[string] $Database = "ElectoralAnalysis",
 	[int] $Skip = 0
@@ -38,7 +38,7 @@ Write-Verbose "Importing from: $dataFile"
 $escapedElection = $Election -replace "'", "''"
 $escapedState = $State -replace "'", "''"
 
-$existing = Invoke-SqlCmd -ServerInstance $ServerInstance -Database $Database -Query "SELECT COUNT(*) AS CountRecords FROM [RawSenateFirstPreferencesLegacy] WHERE Election = '$escapedElection' AND StateAb = '$escapedState';"
+$existing = Invoke-SqlCmd -ServerInstance $ServerInstance -Database $Database -Query "SELECT COUNT(*) AS CountRecords FROM [RawRepresentativesFirstPreferences] WHERE Election = '$escapedElection' AND StateAb = '$escapedState';"
 $startRecords = $existing.CountRecords 
 Write-Verbose "Existing database has $($startRecords) records for election/state"
 
@@ -56,7 +56,7 @@ $count = 0
 $skippedHeader = 0
 $skippedRecords = 0
 $batchDataSelect = ""
-$batchSize = 1000
+$batchSize = 100
 Write-Verbose "Batch size: $batchSize"
 Write-Progress -Activity "Importing $State" -PercentComplete ($count * 100 / $total)
 foreach ($row in $data) {
@@ -97,29 +97,37 @@ foreach ($row in $data) {
 	,$($row.DivisionID) 
 	,'$($row.DivisionNm -replace "'", "''")'
 	,$($row.PollingPlaceID) 
-	,'$($row.PollingPlaceNm -replace "'", "''")'
-	,'$($row.Ticket -replace "'", "''")'
+	,'$($row.PollingPlace -replace "'", "''")'
 	,$($row.CandidateID) 
+	,'$($row.Surname -replace "'", "''")'
+	,'$($row.GivenNm -replace "'", "''")'
 	,$($row.BallotPosition) 
-	,'$($row.CandidateDetails -replace "'", "''")'
+	,'$($row.Elected)'
+	,'$($row.HistoricElected)'
+	,'$($row.PartyAb -replace "'", "''")'
 	,'$($partyNm)'
 	,$($row.OrdinaryVotes) 
+	,$($row.Swing) 
 "
 	if (($count % $batchSize) -eq 0) {
 		Write-Progress -Activity "Importing $State" -PercentComplete ($count * 100 / $total)
-		$query = "INSERT INTO [RawSenateFirstPreferencesLegacy] (
+		$query = "INSERT INTO [RawRepresentativesFirstPreferences] (
 		Election 	
-		,StateAb 
+		,StateAb
 		,DivisionID
 		,DivisionNm
 		,PollingPlaceID
-		,PollingPlaceNm
-		,Ticket
+		,PollingPlace
 		,CandidateID
+		,Surname
+		,GivenNm
 		,BallotPosition
-		,CandidateDetails
+		,Elected
+		,HistoricElected
+		,PartyAb
 		,PartyNm
 		,OrdinaryVotes
+		,Swing
 		) " + $batchDataSelect + ";"
 		
 #Write-Host ">> $query"
@@ -131,19 +139,23 @@ foreach ($row in $data) {
 }
 if ($batchDataSelect) {
 	Write-Progress -Activity "Importing $State" -PercentComplete ($count * 100 / $total)
-	$query = "INSERT INTO [RawSenateFirstPreferencesLegacy] (
+	$query = "INSERT INTO [RawRepresentativesFirstPreferences] (
 	Election 	
-	,StateAb 
+	,StateAb
 	,DivisionID
 	,DivisionNm
 	,PollingPlaceID
-	,PollingPlaceNm
-	,Ticket
+	,PollingPlace
 	,CandidateID
+	,Surname
+	,GivenNm
 	,BallotPosition
-	,CandidateDetails
+	,Elected
+	,HistoricElected
+	,PartyAb
 	,PartyNm
 	,OrdinaryVotes
+	,Swing
 	) " + $batchDataSelect + ";"
 
 #Write-Host "*> $query"
@@ -153,7 +165,7 @@ if ($batchDataSelect) {
 	Write-Progress -Activity "Importing $State" -PercentComplete ($count * 100 / $total)
 }
 
-$result = Invoke-SqlCmd -ServerInstance $ServerInstance -Database $Database -Query "SELECT COUNT(*) AS CountRecords FROM [RawSenateFirstPreferencesLegacy] WHERE Election = '$escapedElection' AND StateAb = '$escapedState';"
+$result = Invoke-SqlCmd -ServerInstance $ServerInstance -Database $Database -Query "SELECT COUNT(*) AS CountRecords FROM [RawRepresentativesFirstPreferences] WHERE Election = '$escapedElection' AND StateAb = '$escapedState';"
 Write-Verbose "Result total $($result.CountRecords) records"
 Write-Verbose "Skipped header lines: $skippedHeader"
 Write-Verbose "Skipped records: $skippedRecords"

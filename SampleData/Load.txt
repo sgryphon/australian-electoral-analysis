@@ -1,14 +1,24 @@
 
 
-# VIC
-
 .\Initialize-AEDatabase.ps1 -Database "ElectoralAnalysisNT"
+
+# NT 2016
 
 .\Import-AESenateTicket.ps1 -Database "ElectoralAnalysisNT" -FilePath "..\SampleData\SenateFirstPrefsByStateByVoteTypeDownload-20499.csv"
 
 .\Import-AESenateVotes.ps1 -Database "ElectoralAnalysisNT" -State "NT" -FilePath "..\SampleData\aec-senate-formalpreferences-20499-NT.csv"
 
+.\Import-AERepresentativesTicket.ps1 -Database "ElectoralAnalysisNT" -FilePath "..\SampleData\HouseCandidatesDownload-20499.csv"
+
+.\Import-AERepresentativesVotes.ps1 -Database "ElectoralAnalysisNT" -FilePath "..\SampleData\HouseStateFirstPrefsByPollingPlaceDownload-20499-NT.csv"
+
+# NT 2013
+
 .\Import-AESenateTicket.ps1 -Database "ElectoralAnalysisNT" -Election "2013 Federal" -FilePath "..\SampleData\SenateFirstPrefsByStateByVoteTypeDownload-17496.csv"
 
 .\Import-AESenateVotesLegacy.ps1 -Database "ElectoralAnalysisNT" -Election "2013 Federal" -State "NT" -FilePath "..\SampleData\SenateStateFirstPrefsByPollingPlaceDownload-17496-NT.csv"
+
+.\Import-AERepresentativesTicket.ps1 -Database "ElectoralAnalysisNT" -Election "2013 Federal" -FilePath "..\SampleData\HouseCandidatesDownload-17496.csv"
+
+.\Import-AERepresentativesVotes.ps1 -Database "ElectoralAnalysisNT" -Election "2013 Federal" -FilePath "..\SampleData\HouseStateFirstPrefsByPollingPlaceDownload-17496-NT.csv"
 

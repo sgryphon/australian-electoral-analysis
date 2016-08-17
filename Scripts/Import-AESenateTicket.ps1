@@ -1,6 +1,6 @@
 <#
 	.Synopsis
-		Sets up an empty database for analysis of Australian electoral data
+		Imports AEC candidate information for the Senate.
 
 #>
 [CmdletBinding(SupportsShouldProcess=$false)]

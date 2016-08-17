@@ -78,6 +78,47 @@ CREATE TABLE [dbo].[RawSenateFirstPreferencesLegacy] (
 );
 GO
 
+CREATE TABLE [dbo].[RawRepresentativesCandidates] (
+	[Id] [int] IDENTITY(1,1) NOT NULL,
+		CONSTRAINT [PK_RawRepresentativesCandidates] PRIMARY KEY CLUSTERED ([Id]),
+	[Election] [nvarchar](50) NULL,
+	[StateAb] [nvarchar](3) NULL,
+	[DivisionID] [int] NULL,
+	[DivisionNm] [nvarchar](100) NULL,
+	[PartyAb] [nvarchar](100) NULL,
+	[PartyNm] [nvarchar](200) NULL,
+	[CandidateID] [int] NULL,
+	[Surname] [nvarchar](200) NULL,
+	[GivenNm] [nvarchar](200) NULL,
+	[Elected] [char](1) NULL,
+	[HistoricElected] [char](1) NULL,
+	[Processed] [bit] NOT NULL DEFAULT(0)
+);
+GO
+
+CREATE TABLE [dbo].[RawRepresentativesFirstPreferences] (
+	[Id] [int] IDENTITY(1,1) NOT NULL,
+		CONSTRAINT [PK_RawRepresentativesFirstPreferences] PRIMARY KEY CLUSTERED ([Id]),
+	[Election] [nvarchar](50) NULL,
+	[StateAb] [nvarchar](3) NULL,
+	[DivisionID] [int] NULL,
+	[DivisionNm] [nvarchar](100) NULL,
+	[PollingPlaceID] [int] NULL,
+	[PollingPlace] [nvarchar](200) NULL,
+	[CandidateID] [int] NULL,
+	[Surname] [nvarchar](200) NULL,
+	[GivenNm] [nvarchar](200) NULL,
+	[BallotPosition] [int] NULL,
+	[Elected] [char](1) NULL,
+	[HistoricElected] [char](1) NULL,
+	[PartyAb] [nvarchar](100) NULL,
+	[PartyNm] [nvarchar](200) NULL,
+	[OrdinaryVotes] [int] NULL,
+	[Swing] [float] NULL,
+	[Processed] [bit] NOT NULL DEFAULT(0)
+);
+GO
+
 CREATE TABLE [dbo].[PartyLookup] (
 	[Id] [int] IDENTITY(1,1) NOT NULL,
 		CONSTRAINT [PK_PartyLookup] PRIMARY KEY CLUSTERED ([Id]),

@@ -1,7 +1,6 @@
 <#
 	.Synopsis
-		Sets up an empty database for analysis of Australian electoral data
-
+		Imports AEC full preference data (2016 on) for the Senate.
 
 #>
 [CmdletBinding(SupportsShouldProcess=$false)]
