@@ -198,7 +198,7 @@ CREATE TABLE [dbo].[TicketDimension] (
 		CONSTRAINT [FK_TicketDimension_ElectionDimension] FOREIGN KEY([ElectionId])
 			REFERENCES [dbo].[ElectionDimension] ([ElectionId]),
 	[Ticket] [nvarchar](2) NOT NULL,
-	[BallotPosition] [smallint] NOT NULL,
+	[TicketPosition] [smallint] NOT NULL,
 	[CandidateDetails] [nvarchar](200) NOT NULL,
 	[PartyName] [nvarchar](200) NOT NULL,
 	[PartyKey] [nchar](4) NOT NULL,

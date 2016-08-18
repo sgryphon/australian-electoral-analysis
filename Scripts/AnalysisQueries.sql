@@ -41,7 +41,7 @@ SELECT
 	e.Electorate, 
 	t1.Ticket,
 	t1.PartyKey, 
-	t1.BallotPosition,
+	t1.TicketPosition,
 	t1.CandidateDetails,
 	SUM(v.VoteCount) AS Votes,
 	CONVERT([decimal](18,0), SUM(v.StateBasisPoints)) AS BasisPoints
@@ -54,7 +54,7 @@ GROUP BY
 	e.Electorate, 
 	t1.Ticket,
 	t1.PartyKey, 
-	t1.BallotPosition,
+	t1.TicketPosition,
 	t1.CandidateDetails
 	 
 -- Senate first preferences by candidate by location type
@@ -63,7 +63,7 @@ SELECT
 	Electorate,
 	Ticket, 
 	PartyKey,
-	BallotPosition,
+	TicketPosition,
 	CandidateDetails,
 	MAX([Ordinary]) AS Ordinary, 
 	MAX([OrdinaryBPS]) AS OrdinaryBPS, 
@@ -81,7 +81,7 @@ FROM
 		e.Electorate, 
 		t1.Ticket,
 		t1.PartyKey, 
-		t1.BallotPosition,
+		t1.TicketPosition,
 		t1.CandidateDetails,
 		l.LocationType,
 		l.LocationType + 'BPS' AS LocationType2,
@@ -98,7 +98,7 @@ FROM
 		e.Electorate, 
 		t1.Ticket,
 		t1.PartyKey, 
-		t1.BallotPosition,
+		t1.TicketPosition,
 		t1.CandidateDetails,
 		l.LocationType
 	) y
@@ -115,9 +115,9 @@ GROUP BY
 	Electorate, 
 	Ticket,
 	PartyKey, 
-	BallotPosition,
+	TicketPosition,
 	CandidateDetails
-ORDER BY Election, Electorate, Ticket, BallotPosition;
+ORDER BY Election, Electorate, Ticket, TicketPosition;
 GO
 
 -- Senate ATL preference distribution by party
@@ -303,3 +303,30 @@ GROUP BY
 	t1.PartyKey, 
 	n.PreferenceNumber, 
 	t.PartyKey;
+
+
+-- QLD first preferences (all elections and houses) by party and location
+SELECT 
+	e.Election,
+	e.House,
+	e.Electorate,
+	l.Division,
+	l.LocationType,
+	l.VoteCollectionPoint,
+	t1.PartyKey,
+	t1.PartyName,
+	t1.TicketPosition,
+	t1.CandidateDetails,
+	SUM(VoteCount) AS Votes,
+	CONVERT([decimal](18,0), SUM(StateBasisPoints)) AS StateBasisPoints,
+	CONVERT([decimal](18,0), SUM(DivisionBasisPoints)) AS DivisionBasisPoints,
+	CONVERT([decimal](18,0), SUM(LocationBasisPoints)) AS LocationBasisPoints
+FROM VoteFact v
+	JOIN ElectionDimension e ON e.ElectionId = v.ElectionId
+	JOIN LocationDimension l ON l.LocationId = v.LocationId
+	JOIN TicketDimension t1 ON t1.TicketId = v.FirstPreferenceTicketId
+WHERE e.[State] = 'QLD'
+GROUP BY 
+	e.Election, e.House, e.Electorate, 
+	l.Division, l.LocationType, l.VoteCollectionPoint, 
+	t1.PartyKey, t1.PartyName, t1.TicketPosition, t1.CandidateDetails;

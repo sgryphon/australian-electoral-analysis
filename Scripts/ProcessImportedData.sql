@@ -243,7 +243,7 @@ SELECT * FROM TicketDimension
 INSERT INTO TicketDimension (
 	ElectionId,
 	Ticket,
-	BallotPosition,
+	TicketPosition,
 	CandidateDetails,
 	PartyName,
 	PartyKey,
@@ -253,7 +253,7 @@ INSERT INTO TicketDimension (
 SELECT DISTINCT
 	e.ElectionId,
 	'NA' AS Ticket,
-	0 AS BallotPosition,
+	0 AS TicketPosition,
 	'*None' AS CandidateDetails,
 	'' AS PartyName,
 	'*NA' AS PartyKey,
@@ -266,7 +266,7 @@ WHERE t.ElectionId IS NULL;
 INSERT INTO TicketDimension (
 	ElectionId,
 	Ticket,
-	BallotPosition,
+	TicketPosition,
 	CandidateDetails,
 	PartyName,
 	PartyKey,
@@ -275,7 +275,7 @@ INSERT INTO TicketDimension (
 )
 SELECT ElectionId, 
 	Ticket, 
-	BallotPosition, 
+	BallotPosition as TicketPosition, 
 	CandidateDetails, 
 	r.PartyName,
 	l.PartyKey AS PartyKey,
@@ -296,7 +296,7 @@ WHERE BallotPosition < 9000 AND Processed = 0;
 INSERT INTO TicketDimension (
 	ElectionId,
 	Ticket,
-	BallotPosition,
+	TicketPosition,
 	CandidateDetails,
 	PartyName,
 	PartyKey,
@@ -305,7 +305,7 @@ INSERT INTO TicketDimension (
 )
 SELECT ElectionId, 
 	'' AS Ticket, 
-	-1 AS BallotPosition, 
+	-1 AS TicketPosition, 
 	r.Surname + ', ' + r.GivenNm AS CandidateDetails, 
 	r.PartyNm,
 	l.PartyKey AS PartyKey,
@@ -318,7 +318,7 @@ FROM RawRepresentativesCandidates r
 WHERE Processed = 0;
 
 UPDATE TicketDimension
-SET BallotPosition = r.BallotPosition, PreferencePosition = r.BallotPosition
+SET TicketPosition = 0, PreferencePosition = r.BallotPosition
 --SELECT * 
 FROM TicketDimension t
 	JOIN ElectionDimension e ON e.ElectionId = t.ElectionId
@@ -326,7 +326,7 @@ FROM TicketDimension t
 				FROM RawRepresentativesFirstPreferences 
 				WHERE Processed = 0) r
 		ON r.Election = e.Election AND r.DivisionNm = e.Electorate AND r.Surname + ', ' + r.GivenNm = t.CandidateDetails
-	WHERE e.House = 'Reps' AND t.BallotPosition = -1;
+	WHERE e.House = 'Reps' AND t.PreferencePosition = -1;
 GO
 
 /*
@@ -376,7 +376,7 @@ SELECT
 	JOIN TicketDimension t 
 		ON t.ElectionId = e.ElectionId 
 		AND t.Ticket = r.Ticket 
-		AND t.BallotPosition = r.BallotPosition
+		AND t.TicketPosition = r.BallotPosition
 	WHERE Processed = 0
 GO
 
@@ -412,7 +412,7 @@ SELECT
 		AND e.Electorate = r.DivisionNm 
 	LEFT JOIN TicketDimension t 
 		ON t.ElectionId = e.ElectionId 
-		AND (t.BallotPosition = r.BallotPosition OR (t.BallotPosition = 0 AND r.BallotPosition = 999))
+		AND (t.PreferencePosition = r.BallotPosition OR (t.PreferencePosition = 0 AND r.BallotPosition = 999))
 	WHERE Processed = 0;
 GO
  
@@ -638,7 +638,7 @@ WHILE ( (@counter <= @max + 1) AND (@updatedRows <> 0) ) BEGIN
 		JOIN (SELECT PreferenceId, PreferenceNumber, s.TicketId 
 				FROM NumberingStaging s
 				JOIN TicketDimension t ON s.TicketId = t.TicketId
-				WHERE Processed = 0 AND t.BallotPosition > 0
+				WHERE Processed = 0 AND t.TicketPosition > 0
 			) x ON p1.PreferenceId = x.PreferenceId
 		WHERE x.PreferenceNumber = (p1.HighestBtlPreference + 1)
 		GROUP BY p1.PreferenceId
@@ -678,7 +678,7 @@ WHILE ( (@counter <= @max + 1) AND (@updatedRows <> 0) ) BEGIN
 		JOIN (SELECT PreferenceId, PreferenceNumber, s.TicketId 
 				FROM NumberingStaging s
 				JOIN TicketDimension t ON s.TicketId = t.TicketId
-				WHERE Processed = 0 AND t.BallotPosition = 0
+				WHERE Processed = 0 AND t.TicketPosition = 0
 			) x ON p1.PreferenceId = x.PreferenceId
 		WHERE x.PreferenceNumber = (p1.HighestAtlPreference + 1)
 		GROUP BY p1.PreferenceId
@@ -716,7 +716,7 @@ JOIN PreferenceDimension p ON s.PreferenceId = p.PreferenceId
 JOIN TicketDimension t ON s.TicketId = t.TicketId
 WHERE Processed = 0
 	AND p.PreferenceType = 'BTL' 
-	AND t.BallotPosition > 0
+	AND t.TicketPosition > 0
 	AND PreferenceNumber > 0
 	AND PreferenceNumber <= HighestBtlPreference;
 GO
@@ -731,7 +731,7 @@ JOIN PreferenceDimension p ON s.PreferenceId = p.PreferenceId
 JOIN TicketDimension t ON s.TicketId = t.TicketId
 WHERE Processed = 0
 	AND p.PreferenceType = 'ATL' 
-	AND t.BallotPosition = 0
+	AND t.TicketPosition = 0
 	AND PreferenceNumber > 0
 	AND PreferenceNumber <= HighestAtlPreference;
 GO
