@@ -203,7 +203,7 @@ CREATE TABLE [dbo].[TicketDimension] (
 	[PartyName] [nvarchar](200) NOT NULL,
 	[PartyKey] [nchar](4) NOT NULL,
 	[PartyShort] [nvarchar](8) NOT NULL,
-	[PreferencePosition] [smallint] NOT NULL
+	[BallotPosition] [smallint] NOT NULL
 );
 GO
 
