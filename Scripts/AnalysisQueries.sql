@@ -137,24 +137,6 @@ WHERE p.PreferenceType = 'ATL' AND e.House = 'Senate'
 GROUP BY e.Election, e.Electorate, n.PreferenceNumber, t.PartyKey
 ORDER BY Election, Electorate, PreferenceNumber, PartyKey;
 
--- Senate ATL preference distribution by first preference and party
-SELECT 
-	e.Election,
-	e.Electorate,
-	t1.PartyKey AS FirstPreferencePartyKey,
-	n.PreferenceNumber,
-	t.PartyKey,
-	SUM(VoteCount) AS Votes,
-	CONVERT([decimal](18,0), SUM(StateBasisPoints)) AS BasisPoints
-FROM VoteFact v
-	JOIN ElectionDimension e ON e.ElectionId = v.ElectionId
-	JOIN PreferenceDimension p ON p.PreferenceId = v.PreferenceId
-	JOIN TicketDimension t1 ON t1.TicketId = v.FirstPreferenceTicketId
-	JOIN NumberingFact n ON n.PreferenceId = p.PreferenceId
-	JOIN TicketDimension t ON t.TicketId = n.TicketId
-WHERE p.PreferenceType = 'ATL' AND e.House = 'Senate'
-GROUP BY e.Election, e.Electorate, t1.PartyKey, n.PreferenceNumber, t.PartyKey
-ORDER BY Election, Electorate, FirstPreferencePartyKey, PreferenceNumber, PartyKey;
 
 -- Senate ATL preference sequence (first three)
 SELECT
@@ -242,12 +224,40 @@ WHERE p.PreferenceType = 'ATL' AND e.House = 'Senate'
 GROUP BY Election, Electorate
 ORDER BY Election, Electorate;
 
+-- Main Query #1 (preferences by first preference and party, by division only)
+-- Senate ATL preference distribution by first preference and party
+-- All QLD only 43k rows, but only goes to division level (not location)
+-- Useful for initial anlysis of state-wide preference flows (to/from)
+SELECT 
+	e.Election,
+	e.Electorate,
+	t1.PartyKey AS FirstPreferencePartyKey,
+	n.PreferenceNumber,
+	t.PartyKey,
+	SUM(VoteCount) AS Votes,
+	CONVERT([decimal](18,0), SUM(StateBasisPoints)) AS BasisPoints
+FROM VoteFact v
+	JOIN ElectionDimension e ON e.ElectionId = v.ElectionId
+	JOIN PreferenceDimension p ON p.PreferenceId = v.PreferenceId
+	JOIN TicketDimension t1 ON t1.TicketId = v.FirstPreferenceTicketId
+	JOIN NumberingFact n ON n.PreferenceId = p.PreferenceId
+	JOIN TicketDimension t ON t.TicketId = n.TicketId
+WHERE p.PreferenceType = 'ATL' AND e.House = 'Senate'
+GROUP BY e.Election, e.Electorate, t1.PartyKey, n.PreferenceNumber, t.PartyKey
+ORDER BY Election, Electorate, FirstPreferencePartyKey, PreferenceNumber, PartyKey;
+
+
+-- Main Query #2 (preferences by party by location)
 -- QLD Senate ATL preference distribution by party and location
+-- All QLD has 540k rows. Use for analysing prefs 1-8 by location.
 SELECT 
 	e.Election,
 	e.Electorate,
 	l.Division,
-	l.LocationType,
+	l.LocationType + CASE 
+		WHEN COALESCE(l.LocationSubtype, '') <> ''  THEN ' (' + l.LocationSubtype + ')'
+		ELSE ''
+	END AS LocationType,
 	l.VoteCollectionPoint,
 	n.PreferenceNumber,
 	t.PartyKey,
@@ -267,16 +277,55 @@ WHERE p.PreferenceType = 'ATL'
 	AND n.PreferenceNumber <= 8
 GROUP BY 
 	e.Election, e.Electorate, 
-	l.Division, l.LocationType, l.VoteCollectionPoint, 
+	l.Division, l.LocationType, l.LocationSubtype, l.VoteCollectionPoint, 
 	n.PreferenceNumber, 
 	t.PartyKey;
 
+-- Main Query #3 (historic first prefs by location)
+-- QLD historic first preferences (all elections and houses) by party and location
+-- All QLD has 350k rows; used for Reps data and 2013 data; 
+-- If comparing to prefs, includes both BTL and ATL (ATL is TicketPosition = 0 only)
+SELECT 
+	e.Election,
+ 	e.House,
+	e.Electorate,
+	l.Division,
+	l.LocationType + CASE 
+		WHEN COALESCE(l.LocationSubtype, '') <> ''  THEN ' (' + l.LocationSubtype + ')'
+		ELSE ''
+	END AS LocationType,
+	l.VoteCollectionPoint,
+	t1.PartyKey,
+	t1.PartyName,
+	t1.TicketPosition,
+	t1.CandidateDetails,
+	SUM(VoteCount) AS Votes,
+	CONVERT([decimal](18,0), SUM(StateBasisPoints)) AS StateBasisPoints,
+	CONVERT([decimal](18,0), SUM(DivisionBasisPoints)) AS DivisionBasisPoints,
+	CONVERT([decimal](18,0), SUM(LocationBasisPoints)) AS LocationBasisPoints
+FROM VoteFact v
+	JOIN ElectionDimension e ON e.ElectionId = v.ElectionId
+	JOIN LocationDimension l ON l.LocationId = v.LocationId
+	JOIN TicketDimension t1 ON t1.TicketId = v.FirstPreferenceTicketId
+WHERE e.[State] = 'QLD'
+GROUP BY 
+	e.Election, e.House, e.Electorate, 
+	l.Division, l.LocationType, l.LocationSubtype, l.VoteCollectionPoint, 
+	t1.PartyKey, t1.PartyName, t1.TicketPosition, t1.CandidateDetails;
+
+
 -- Ryan (QLD) Senate ATL preference distribution by first preference, by party and location
+-- Limit to pref <= 8, Ryan only has 85k rows.
+-- Use for preferences to/from down to location level (e.g. analysing HTV effect) 
+-- (entire state is 2.8 million rows; even more if you don't limit prefs).
 SELECT 
 	e.Election,
 	e.Electorate,
 	l.Division,
-	l.LocationType,
+	l.LocationType + CASE 
+		WHEN COALESCE(l.LocationSubtype, '') <> ''  THEN ' (' + l.LocationSubtype + ')'
+		ELSE ''
+	END AS LocationType,
 	l.VoteCollectionPoint,
 	t1.PartyKey AS FirstPreferencePartyKey,
 	n.PreferenceNumber,
@@ -295,38 +344,13 @@ FROM VoteFact v
 WHERE p.PreferenceType = 'ATL' 
 	AND e.House = 'Senate' 
 	AND e.Electorate = 'QLD'
-	and l.Division = 'Ryan'
+	AND l.Division = 'Ryan'
 	AND n.PreferenceNumber <= 8
 GROUP BY 
 	e.Election, e.Electorate, 
-	l.Division, l.LocationType, l.VoteCollectionPoint,
+	l.Division, l.LocationType, l.LocationSubtype, l.VoteCollectionPoint,
 	t1.PartyKey, 
 	n.PreferenceNumber, 
 	t.PartyKey;
 
 
--- QLD first preferences (all elections and houses) by party and location
-SELECT 
-	e.Election,
-	e.House,
-	e.Electorate,
-	l.Division,
-	l.LocationType,
-	l.VoteCollectionPoint,
-	t1.PartyKey,
-	t1.PartyName,
-	t1.TicketPosition,
-	t1.CandidateDetails,
-	SUM(VoteCount) AS Votes,
-	CONVERT([decimal](18,0), SUM(StateBasisPoints)) AS StateBasisPoints,
-	CONVERT([decimal](18,0), SUM(DivisionBasisPoints)) AS DivisionBasisPoints,
-	CONVERT([decimal](18,0), SUM(LocationBasisPoints)) AS LocationBasisPoints
-FROM VoteFact v
-	JOIN ElectionDimension e ON e.ElectionId = v.ElectionId
-	JOIN LocationDimension l ON l.LocationId = v.LocationId
-	JOIN TicketDimension t1 ON t1.TicketId = v.FirstPreferenceTicketId
-WHERE e.[State] = 'QLD'
-GROUP BY 
-	e.Election, e.House, e.Electorate, 
-	l.Division, l.LocationType, l.VoteCollectionPoint, 
-	t1.PartyKey, t1.PartyName, t1.TicketPosition, t1.CandidateDetails;
