@@ -348,7 +348,7 @@ SELECT
 	VoteCollectionPointNm, 
 	Preferences, 
 	COUNT(*) AS VoteCount
-	FROM RawSenateFormalPreferences 
+	FROM RawSenateFormalPreferences2016 
 	WHERE Processed = 0
 	GROUP BY Election, StateAb, Preferences, ElectorateNm, VoteCollectionPointNm;
 GO
@@ -368,7 +368,7 @@ SELECT
 	PollingPlaceNm AS VoteCollectionPointNm, 
 	t.TicketId AS FirstPreferenceTicketId, 
 	OrdinaryVotes AS VoteCount
-	FROM RawSenateFirstPreferencesLegacy r
+	FROM RawSenatePollingPlaceFirstPreferences2013 r
 	JOIN ElectionDimension e 
 		ON e.Election = r.Election 
 		AND e.House = 'Senate' 
@@ -851,11 +851,11 @@ UPDATE RawSenateFirstPreferences
 SET Processed = 1
 WHERE Processed = 0;
 
-UPDATE RawSenateFirstPreferencesLegacy 
+UPDATE RawSenatePollingPlaceFirstPreferences2013 
 SET Processed = 1
 WHERE Processed = 0;
 
-UPDATE RawSenateFormalPreferences 
+UPDATE RawSenateFormalPreferences2016 
 SET Processed = 1
 WHERE Processed = 0;
 

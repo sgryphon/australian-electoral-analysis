@@ -1,10 +1,11 @@
 <#
 	.Synopsis
-		Imports AEC legacy (2013 and before) Senate first preference votes.
+		Imports AEC full preference data (2016) for the Senate.
+
 
 	.Description
 		The Senate voting system changed at the Australian 2016 Federal election.
-		This script supports the old Senate data format, used prior to 2016.
+		This script supports the new Senate data format, used from 2016 onwards.
 		
 	.Parameter Election
 		Name to identify the election, to allow data from multiple elections to be loaded.
@@ -14,7 +15,7 @@
 		
 	.Parameter FilePath
 		Path to the data file. 
-		The file name should be something like 'SenateStateFirstPrefsByPollingPlaceDownload-17496-NT.csv'.
+		The file name should be something like 'aec-senate-formalpreferences-20499-NT.csv'.
 	
 	.Parameter ServerInstance
 		SQL Server to run the script on. Default is local SQLEXPRESS.
@@ -23,8 +24,8 @@
 		Name of the database to run the script against. Default is 'ElectoralAnalysis'.
 
 	.Example
-	    .\Import-AESenateVotesLegacy.ps1 -Election "2013 Federal" -State "NT" `
-			-FilePath "..\SampleData\SenateStateFirstPrefsByPollingPlaceDownload-17496-NT.csv"
+	    .\Import-AESenateVotes2016.ps1 -Election "2016 Federal" -State "NT" `
+			-FilePath "..\SampleData\aec-senate-formalpreferences-20499-NT.csv"
 		
 #>
 [CmdletBinding(SupportsShouldProcess=$false)]
@@ -59,14 +60,20 @@ Write-Verbose "Importing: $Election - $State"
 $dataFile = Join-Path $scriptRoot $FilePath
 Write-Verbose "Importing from: $dataFile"
 
+<#
+$query = "BULK INSERT [RawSenateFormalPreferences] FROM '$dataFile' WITH ( FIELDTERMINATOR = ',', FIRSTROW = 3 );"
+Write-Host $query
+Invoke-SqlCmd -ServerInstance $ServerInstance -Database $Database -Query $query
+#>
+
 $escapedElection = $Election -replace "'", "''"
 $escapedState = $State -replace "'", "''"
 
-$existing = Invoke-SqlCmd -ServerInstance $ServerInstance -Database $Database -Query "SELECT COUNT(*) AS CountRecords FROM [RawSenateFirstPreferencesLegacy] WHERE Election = '$escapedElection' AND StateAb = '$escapedState';"
+$existing = Invoke-SqlCmd -ServerInstance $ServerInstance -Database $Database -Query "SELECT COUNT(*) AS CountRecords FROM [RawSenateFormalPreferences2016] WHERE Election = '$escapedElection' AND StateAb = '$escapedState';"
 $startRecords = $existing.CountRecords 
 Write-Verbose "Existing database has $($startRecords) records for election/state"
 
-$data = Get-Content $dataFile | Select -Skip 1 | ConvertFrom-Csv
+$data = Import-Csv $dataFile
 $total = $data.Count
 Write-Verbose "Importing $total rows from data file"
 
@@ -80,7 +87,7 @@ $count = 0
 $skippedHeader = 0
 $skippedRecords = 0
 $batchDataSelect = ""
-$batchSize = 100
+$batchSize = 1000
 Write-Verbose "Batch size: $batchSize"
 $progressActivity = "Importing Senate $Election - $State"
 Write-Progress -Activity $progressActivity -PercentComplete ($count * 100 / $total)
@@ -96,11 +103,6 @@ foreach ($row in $data) {
 		continue;
 	}
 	
-	# Funny last line character "SUB"
-	if ( ($row.StateAb.Length -eq 1) -and ([int]($row.StateAb[0]) -eq 0x1A) ) {
-		continue;
-	}
-	
 	if ($skipFlag) {
 		Write-Verbose "Skipped $skippedRecords records, starting processing"
 		$skipFlag = $false
@@ -109,75 +111,51 @@ foreach ($row in $data) {
 	if ($batchDataSelect) { 
 		$batchDataSelect += " UNION ALL "
 	}
-
-	$partyNm = $row.PartyNm  -replace "'", "''"
-	# Remove NULL (#0)
-	if ( ($partyNm.Length -eq 1) -and ([int]($partyNm[0]) -eq 0) ) {
-		$partyNm = ""
-	}
-	
 	$batchDataSelect += "SELECT
 	'$($escapedElection)'
-	,'$($row.StateAb -replace "'", "''")' 
-	,$($row.DivisionID) 
-	,'$($row.DivisionNm -replace "'", "''")'
-	,$($row.PollingPlaceID) 
-	,'$($row.PollingPlaceNm -replace "'", "''")'
-	,'$($row.Ticket -replace "'", "''")'
-	,$($row.CandidateID) 
-	,$($row.BallotPosition) 
-	,'$($row.CandidateDetails -replace "'", "''")'
-	,'$($partyNm)'
-	,$($row.OrdinaryVotes) 
+	,'$($escapedState)'
+	,'$($row.ElectorateNm -replace "'", "''")'
+	,'$($row.VoteCollectionPointNm -replace "'", "''")'
+	,$($row.VoteCollectionPointId) 
+	,$($row.BatchNo) 
+	,$($row.PaperNo) 
+	,'$($row.Preferences -replace "'", "''")'
 "
+	
 	if (($count % $batchSize) -eq 0) {
-		$query = "INSERT INTO [RawSenateFirstPreferencesLegacy] (
+		$query = "INSERT INTO [RawSenateFormalPreferences2016] (
 		Election 	
 		,StateAb 
-		,DivisionID
-		,DivisionNm
-		,PollingPlaceID
-		,PollingPlaceNm
-		,Ticket
-		,CandidateID
-		,BallotPosition
-		,CandidateDetails
-		,PartyNm
-		,OrdinaryVotes
+		,ElectorateNm 
+		,VoteCollectionPointNm 
+		,VoteCollectionPointId 
+		,BatchNo 
+		,PaperNo 
+		,Preferences
 		) " + $batchDataSelect + ";"
-		
-#Write-Host ">> $query"
-#$dummy = Read-Host		
 		Invoke-SqlCmd -ServerInstance $ServerInstance -Database $Database -Query $query
 		$batchDataSelect = ""
 		Write-Progress -Activity $progressActivity -PercentComplete ($count * 100 / $total)
 	}
 }
 if ($batchDataSelect) {
-	$query = "INSERT INTO [RawSenateFirstPreferencesLegacy] (
+	$query = "INSERT INTO [RawSenateFormalPreferences2016] (
 	Election 	
 	,StateAb 
-	,DivisionID
-	,DivisionNm
-	,PollingPlaceID
-	,PollingPlaceNm
-	,Ticket
-	,CandidateID
-	,BallotPosition
-	,CandidateDetails
-	,PartyNm
-	,OrdinaryVotes
+	,ElectorateNm 
+	,VoteCollectionPointNm 
+	,VoteCollectionPointId 
+	,BatchNo 
+	,PaperNo 
+	,Preferences
 	) " + $batchDataSelect + ";"
-
-#Write-Host "*> $query"
-
 	Invoke-SqlCmd -ServerInstance $ServerInstance -Database $Database -Query $query
 	$batchDataSelect = ""
 	Write-Progress -Activity $progressActivity -PercentComplete ($count * 100 / $total)
 }
 Write-Progress -Activity $progressActivity -Completed
 
-$result = Invoke-SqlCmd -ServerInstance $ServerInstance -Database $Database -Query "SELECT COUNT(*) AS CountRecords FROM [RawSenateFirstPreferencesLegacy] WHERE Election = '$escapedElection' AND StateAb = '$escapedState';"
+$result = Invoke-SqlCmd -ServerInstance $ServerInstance -Database $Database -Query "SELECT COUNT(*) AS CountRecords FROM [RawSenateFormalPreferences2016] WHERE Election = '$escapedElection' AND StateAb = '$escapedState';"
 Write-Verbose "Result total $($result.CountRecords) records"
 Write-Verbose "Skipped header lines: $skippedHeader"
 Write-Verbose "Skipped records: $skippedRecords"

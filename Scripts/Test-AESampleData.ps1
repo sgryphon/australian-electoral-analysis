@@ -29,32 +29,43 @@ Write-Host "`nRunning all scripts to load data for NT into '$Database'. This may
 
 .\Initialize-AEDatabase.ps1 -Database $Database -DeleteExisting -Confirm:$false
 
-# NT 2016
-
-.\Import-AESenateTicket.ps1 -Database $Database -Election "2016 Federal" -FilePath "..\SampleData\SenateFirstPrefsByStateByVoteTypeDownload-20499.csv"
-
-.\Import-AESenateVotes.ps1 -Database $Database -Election "2016 Federal" -State "NT" -FilePath "..\SampleData\aec-senate-formalpreferences-20499-NT.csv"
-
-.\Invoke-AETransformData.ps1 -Database $Database
-
-.\Import-AERepresentativesTicket.ps1 -Database $Database -Election "2016 Federal" -FilePath "..\SampleData\HouseCandidatesDownload-20499.csv"
-
-.\Import-AERepresentativesVotes.ps1 -Database $Database -Election "2016 Federal" -State "NT" -FilePath "..\SampleData\HouseStateFirstPrefsByPollingPlaceDownload-20499-NT.csv"
-
-.\Invoke-AETransformData.ps1 -Database $Database
-
 # NT 2013
 
-.\Import-AESenateTicket.ps1 -Database $Database -Election "2013 Federal" -FilePath "..\SampleData\SenateFirstPrefsByStateByVoteTypeDownload-17496.csv"
+.\Import-AERepresentativesTicket.ps1 -Database $Database -Election "2013 Federal" -FilePath "..\SampleData\2013\HouseCandidatesDownload-17496.csv"
 
-.\Import-AESenateVotesLegacy.ps1 -Database $Database -Election "2013 Federal" -State "NT" -FilePath "..\SampleData\SenateStateFirstPrefsByPollingPlaceDownload-17496-NT.csv"
+.\Import-AERepresentativesVotes.ps1 -Database $Database -Election "2013 Federal" -State "NT" -FilePath "..\SampleData\2013\HouseStateFirstPrefsByPollingPlaceDownload-17496-NT.csv"
 
-.\Import-AERepresentativesTicket.ps1 -Database $Database -Election "2013 Federal" -FilePath "..\SampleData\HouseCandidatesDownload-17496.csv"
+.\Import-AESenateTicket.ps1 -Database $Database -Election "2013 Federal" -FilePath "..\SampleData\2013\SenateFirstPrefsByStateByVoteTypeDownload-17496.csv"
 
-.\Import-AERepresentativesVotes.ps1 -Database $Database -Election "2013 Federal" -State "NT" -FilePath "..\SampleData\HouseStateFirstPrefsByPollingPlaceDownload-17496-NT.csv"
+.\Import-AESenateVotes2013.ps1 -Database $Database -Election "2013 Federal" -State "NT" -FilePath "..\SampleData\2013\SenateStateFirstPrefsByPollingPlaceDownload-17496-NT.csv"
 
 .\Invoke-AETransformData.ps1 -Database $Database
 
+# NT 2016
+
+.\Import-AERepresentativesTicket.ps1 -Database $Database -Election "2016 Federal" -FilePath "..\SampleData\2016\HouseCandidatesDownload-20499.csv"
+
+.\Import-AERepresentativesVotes.ps1 -Database $Database -Election "2016 Federal" -State "NT" -FilePath "..\SampleData\2016\HouseStateFirstPrefsByPollingPlaceDownload-20499-NT.csv"
+
+.\Import-AESenateTicket.ps1 -Database $Database -Election "2016 Federal" -FilePath "..\SampleData\2016\SenateFirstPrefsByStateByVoteTypeDownload-20499.csv"
+
+.\Import-AESenateVotes2016.ps1 -Database $Database -Election "2016 Federal" -State "NT" -FilePath "..\SampleData\2016\aec-senate-formalpreferences-20499-NT.csv"
+
+.\Invoke-AETransformData.ps1 -Database $Database
+
+# NT 2019
+
+.\Import-AERepresentativesTicket.ps1 -Database $Database -Election "2019 Federal" -FilePath "..\SampleData\2019\HouseCandidatesDownload-24310.csv"
+
+.\Import-AERepresentativesVotes.ps1 -Database $Database -Election "2019 Federal" -State "NT" -FilePath "..\SampleData\2019\HouseStateFirstPrefsByPollingPlaceDownload-24310-NT.csv"
+
+.\Invoke-AETransformData.ps1 -Database $Database
+
+.\Import-AESenateTicket.ps1 -Database $Database -Election "2019 Federal" -FilePath "..\SampleData\2019\SenateFirstPrefsByStateByVoteTypeDownload-24310.csv"
+
+.\Import-AESenateVotes2019.ps1 -Database $Database -Election "2019 Federal" -State "NT" -FilePath "..\SampleData\2019\aec-senate-formalpreferences-24310-NT.csv"
+
+.\Invoke-AETransformData.ps1 -Database $Database
 
 
 

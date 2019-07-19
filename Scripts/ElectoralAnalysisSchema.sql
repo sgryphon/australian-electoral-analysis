@@ -44,9 +44,9 @@ CREATE TABLE [dbo].[RawSenateFirstPreferences] (
 );
 GO
 
-CREATE TABLE [dbo].[RawSenateFormalPreferences] (
+CREATE TABLE [dbo].[RawSenateFormalPreferences2016] (
 	[Id] [int] IDENTITY(1,1) NOT NULL,
-		CONSTRAINT [PK_RawSenateFormalPreferences] PRIMARY KEY CLUSTERED ([Id]),
+		CONSTRAINT [PK_RawSenateFormalPreferences2016] PRIMARY KEY CLUSTERED ([Id]),
 	[Election] [nvarchar](50) NULL,
 	[StateAb] [nvarchar](3) NULL,
 	[ElectorateNm] [nvarchar](100) NULL,
@@ -59,9 +59,9 @@ CREATE TABLE [dbo].[RawSenateFormalPreferences] (
 );
 GO
 
-CREATE TABLE [dbo].[RawSenateFirstPreferencesLegacy] (
+CREATE TABLE [dbo].[RawSenatePollingPlaceFirstPreferences2013] (
 	[Id] [int] IDENTITY(1,1) NOT NULL,
-		CONSTRAINT [PK_RawSenateFirstPreferencesLegacy] PRIMARY KEY CLUSTERED ([Id]),
+		CONSTRAINT [PK_RawSenatePollingPlaceFirstPreferences2013] PRIMARY KEY CLUSTERED ([Id]),
 	[Election] [nvarchar](50) NULL,
 	[StateAb] [nvarchar](3) NULL,
 	[DivisionID] [int] NULL,
