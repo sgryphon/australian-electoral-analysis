@@ -82,7 +82,6 @@ if ($Skip) {
 }
 
 $count = 0
-$skippedHeader = 0
 $skippedRecords = 0
 $batchDataSelect = ""
 $batchSize = 100
@@ -91,12 +90,7 @@ $progressActivity = "Importing Reps $Election - $State"
 Write-Progress -Activity $progressActivity -PercentComplete ($count * 100 / $total)
 foreach ($row in $data) {
     $count++;
-	if ($count -le 1) { 
-		$skippedHeader++;
-		continue; 
-	}
-	
-	if ($count -le ($Skip + 1)) {
+	if ($count -le $Skip) {
 		$skippedRecords++;
 		continue;
 	}
@@ -196,7 +190,6 @@ Write-Progress -Activity $progressActivity -Completed
 
 $result = Invoke-SqlCmd -ServerInstance $ServerInstance -Database $Database -Query "SELECT COUNT(*) AS CountRecords FROM [RawRepresentativesFirstPreferences] WHERE Election = '$escapedElection' AND StateAb = '$escapedState';"
 Write-Verbose "Result total $($result.CountRecords) records"
-Write-Verbose "Skipped header lines: $skippedHeader"
 Write-Verbose "Skipped records: $skippedRecords"
 	
 $endTime = [datetimeoffset]::Now
