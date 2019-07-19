@@ -29,6 +29,8 @@ Write-Host "`nRunning all scripts to load data for NT into '$Database'. This may
 
 .\Initialize-AEDatabase.ps1 -Database $Database -DeleteExisting -Confirm:$false
 
+.\Update-AEPartyLookup -Database $Database -FilePath ".\PartyLookup.csv"
+
 # NT 2013
 
 .\Import-AERepresentativesTicket.ps1 -Database $Database -Election "2013 Federal" -FilePath "..\SampleData\2013\HouseCandidatesDownload-17496.csv"
@@ -57,11 +59,13 @@ Write-Host "`nRunning all scripts to load data for NT into '$Database'. This may
 
 .\Import-AERepresentativesTicket.ps1 -Database $Database -Election "2019 Federal" -FilePath "..\SampleData\2019\HouseCandidatesDownload-24310.csv"
 
+.\Import-AESenateTicket.ps1 -Database $Database -Election "2019 Federal" -FilePath "..\SampleData\2019\SenateFirstPrefsByStateByVoteTypeDownload-24310.csv"
+
+.\Get-AEMissingPartyLookup -Database $Database
+
 .\Import-AERepresentativesVotes.ps1 -Database $Database -Election "2019 Federal" -State "NT" -FilePath "..\SampleData\2019\HouseStateFirstPrefsByPollingPlaceDownload-24310-NT.csv"
 
 .\Invoke-AETransformData.ps1 -Database $Database
-
-.\Import-AESenateTicket.ps1 -Database $Database -Election "2019 Federal" -FilePath "..\SampleData\2019\SenateFirstPrefsByStateByVoteTypeDownload-24310.csv"
 
 .\Import-AESenateVotes2019.ps1 -Database $Database -Election "2019 Federal" -State "NT" -FilePath "..\SampleData\2019\aec-senate-formalpreferences-24310-NT.csv"
 
