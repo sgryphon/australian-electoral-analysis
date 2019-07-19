@@ -62,6 +62,7 @@ Write-Host "`nRunning all scripts to load data for NT into '$Database'. This may
 .\Import-AESenateTicket.ps1 -Database $Database -Election "2019 Federal" -FilePath "..\SampleData\2019\SenateFirstPrefsByStateByVoteTypeDownload-24310.csv"
 
 .\Get-AEMissingPartyLookup -Database $Database
+# .\Get-AEMissingPartyLookup -Database $Database | Export-Csv NewPartyNames.csv
 
 .\Import-AERepresentativesVotes.ps1 -Database $Database -Election "2019 Federal" -State "NT" -FilePath "..\SampleData\2019\HouseStateFirstPrefsByPollingPlaceDownload-24310-NT.csv"
 

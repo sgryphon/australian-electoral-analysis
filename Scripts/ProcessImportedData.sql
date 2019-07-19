@@ -12,19 +12,6 @@ SELECT * FROM PartyLookup;
 */
 
 /*
--- Check for missing parties
-SELECT 'INSERT INTO [PartyLookup] (PartyName, PartyKey, PartyShort) VALUES (''' + PartyName + ''', '''', '''');' AS SQL
-FROM (SELECT DISTINCT PartyName 
-	FROM RawSenateFirstPreferences
-	WHERE PartyName NOT IN (SELECT PartyName FROM PartyLookup)) p;
-
-SELECT 'INSERT INTO [PartyLookup] (PartyName, PartyKey, PartyShort) VALUES (''' + PartyNm + ''', ''' + PartyAb + ''', '''');' AS SQL
-FROM (SELECT DISTINCT PartyNm, PartyAb 
-	FROM RawRepresentativesCandidates
-	WHERE PartyNm NOT IN (SELECT PartyName FROM PartyLookup)) p;
-*/
-
-/*
 SELECT * FROM ElectionDimension
 */
 
