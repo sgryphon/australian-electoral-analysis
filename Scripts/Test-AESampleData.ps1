@@ -29,7 +29,9 @@ Write-Host "`nRunning all scripts to load data for NT into '$Database'. This may
 
 .\Initialize-AEDatabase.ps1 -Database $Database -DeleteExisting -Confirm:$false
 
-.\Update-AEPartyLookup -Database $Database -FilePath ".\PartyLookup.csv"
+Set-Location $scriptRoot
+
+.\Update-AEPartyLookup.ps1 -Database $Database -FilePath ".\PartyLookup.csv"
 
 # NT 2013
 

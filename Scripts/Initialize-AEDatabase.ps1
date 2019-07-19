@@ -69,4 +69,3 @@ if ((-not $exists) -or $dropped) {
 $schemaFile = Join-Path $scriptRoot "ElectoralAnalysisSchema.sql"
 Write-Verbose "Executing schema script '$schemaFile'"
 Invoke-SqlCmd -ServerInstance $ServerInstance -Database $Database -InputFile $schemaFile
-
