@@ -44,21 +44,6 @@ CREATE TABLE [dbo].[RawSenateFirstPreferences] (
 );
 GO
 
-CREATE TABLE [dbo].[RawSenateFormalPreferences2016] (
-	[Id] [int] IDENTITY(1,1) NOT NULL,
-		CONSTRAINT [PK_RawSenateFormalPreferences2016] PRIMARY KEY CLUSTERED ([Id]),
-	[Election] [nvarchar](50) NULL,
-	[StateAb] [nvarchar](3) NULL,
-	[ElectorateNm] [nvarchar](100) NULL,
-	[VoteCollectionPointNm] [nvarchar](200) NULL,
-	[VoteCollectionPointId] [int] NULL,
-	[BatchNo] [int] NULL,
-	[PaperNo] [int] NULL,
-	[Preferences] [nvarchar](1000) NULL,
-	[Processed] [bit] NOT NULL DEFAULT(0)
-);
-GO
-
 CREATE TABLE [dbo].[RawSenatePollingPlaceFirstPreferences2013] (
 	[Id] [int] IDENTITY(1,1) NOT NULL,
 		CONSTRAINT [PK_RawSenatePollingPlaceFirstPreferences2013] PRIMARY KEY CLUSTERED ([Id]),
@@ -74,6 +59,36 @@ CREATE TABLE [dbo].[RawSenatePollingPlaceFirstPreferences2013] (
 	[CandidateDetails] [nvarchar](200) NULL,
 	[PartyNm] [nvarchar](200) NULL,
 	[OrdinaryVotes] [int] NULL,
+	[Processed] [bit] NOT NULL DEFAULT(0)
+);
+GO
+
+CREATE TABLE [dbo].[RawSenateFormalPreferences2016] (
+	[Id] [int] IDENTITY(1,1) NOT NULL,
+		CONSTRAINT [PK_RawSenateFormalPreferences2016] PRIMARY KEY CLUSTERED ([Id]),
+	[Election] [nvarchar](50) NULL,
+	[StateAb] [nvarchar](3) NULL,
+	[ElectorateNm] [nvarchar](100) NULL,
+	[VoteCollectionPointNm] [nvarchar](200) NULL,
+	[VoteCollectionPointId] [int] NULL,
+	[BatchNo] [int] NULL,
+	[PaperNo] [int] NULL,
+	[Preferences] [nvarchar](1000) NULL,
+	[Processed] [bit] NOT NULL DEFAULT(0)
+);
+GO
+
+CREATE TABLE [dbo].[RawSenateFormalPreferences2019] (
+	[Id] [int] IDENTITY(1,1) NOT NULL,
+		CONSTRAINT [PK_RawSenateFormalPreferences2019] PRIMARY KEY CLUSTERED ([Id]),
+	[Election] [nvarchar](50) NULL,
+	[StateAb] [nvarchar](3) NULL,
+	[Division] [nvarchar](100) NULL,
+	[VoteCollectionPointName] [nvarchar](200) NULL,
+	[VoteCollectionPointId] [int] NULL,
+	[BatchNo] [int] NULL,
+	[PaperNo] [int] NULL,
+	[Preferences] [nvarchar](1000) NULL,
 	[Processed] [bit] NOT NULL DEFAULT(0)
 );
 GO

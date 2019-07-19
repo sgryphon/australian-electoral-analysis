@@ -82,13 +82,18 @@ FROM RawRepresentativesCandidates r
 WHERE Processed = 0 AND e.ElectionId IS NULL;
 
 UPDATE ElectionDimension
+SET [Year] = 2013, [Date] = '20130907', [Type] = 'Regular'
+WHERE [Type] = '' AND Election = '2013 Federal';
+GO
+
+UPDATE ElectionDimension
 SET [Year] = 2016, [Date] = '20160702', [Type] = 'Double Dissolution'
 WHERE [Type] = '' AND Election = '2016 Federal';
 GO
 
 UPDATE ElectionDimension
-SET [Year] = 2013, [Date] = '20130907', [Type] = 'Regular'
-WHERE [Type] = '' AND Election = '2013 Federal';
+SET [Year] = 2019, [Date] = '20190518', [Type] = 'Regular'
+WHERE [Type] = '' AND Election = '2019 Federal';
 GO
 
 /*
@@ -193,26 +198,6 @@ INSERT INTO [VoteStaging] (
 	StateAb, 
 	ElectorateNm, 
 	VoteCollectionPointNm, 
-	Preferences, 
-	VoteCount
-)
-SELECT 
-	Election, 
-	StateAb, 
-	ElectorateNm, 
-	VoteCollectionPointNm, 
-	Preferences, 
-	COUNT(*) AS VoteCount
-	FROM RawSenateFormalPreferences2016 
-	WHERE Processed = 0
-	GROUP BY Election, StateAb, Preferences, ElectorateNm, VoteCollectionPointNm;
-GO
-
-INSERT INTO [VoteStaging] (
-	Election, 
-	StateAb, 
-	ElectorateNm, 
-	VoteCollectionPointNm, 
 	FirstPreferenceTicketId, 
 	VoteCount
 )
@@ -233,6 +218,46 @@ SELECT
 		AND t.Ticket = r.Ticket 
 		AND t.TicketPosition = r.BallotPosition
 	WHERE Processed = 0
+GO
+
+INSERT INTO [VoteStaging] (
+	Election, 
+	StateAb, 
+	ElectorateNm, 
+	VoteCollectionPointNm, 
+	Preferences, 
+	VoteCount
+)
+SELECT 
+	Election, 
+	StateAb, 
+	ElectorateNm, 
+	VoteCollectionPointNm, 
+	Preferences, 
+	COUNT(*) AS VoteCount
+	FROM RawSenateFormalPreferences2016 
+	WHERE Processed = 0
+	GROUP BY Election, StateAb, Preferences, ElectorateNm, VoteCollectionPointNm;
+GO
+
+INSERT INTO [VoteStaging] (
+	Election, 
+	StateAb, 
+	ElectorateNm, 
+	VoteCollectionPointNm, 
+	Preferences, 
+	VoteCount
+)
+SELECT 
+	Election, 
+	StateAb, 
+	Division AS ElectorateNm, 
+	VoteCollectionPointName AS VoteCollectionPointNm, 
+	Preferences, 
+	COUNT(*) AS VoteCount
+	FROM RawSenateFormalPreferences2019 
+	WHERE Processed = 0
+	GROUP BY Election, StateAb, Preferences, Division, VoteCollectionPointName;
 GO
 
 UPDATE [VoteStaging]
