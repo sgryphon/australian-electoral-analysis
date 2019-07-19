@@ -4,7 +4,7 @@ Australian Electoral Analysis
 Design
 ------
 
-The database uses a star schema, common in data warehouse / reportingn applications.
+The database uses a star schema, common in data warehouse / reporting applications.
 
 This has a separate fact table, linked to multiple denormalised dimension tables. The denormalised structure is optimised for querying. 
 
@@ -31,29 +31,83 @@ so some of the larger states may need to be loaded into a separate database.
 Instructions
 ------------
 
-* Download data, if needed, from the AEC website (http://aec.gov.au/)
+* Sample files for NT, from 2013 and 2016, are in the SampleData folder
+
+* Download data from the AEC website (http://aec.gov.au/) and put in a Data folder
  
 * You will need:
   - SenateFirstPrefsByStateByVoteTypeDownload-20499.csv (contains all parties and candidates, in ticket order)
   - aec-senate-formalpreferences-20499-[STATE].csv (contains Senate voting data for each state)
-  - Sample files from 2016, and for NT, are in the SampleData folder
- 
+
 * Create a database, e.g. 'ElectoralAnalysis' in SQL Server
 
-* Edit the parameters and run: Initialize-AEDatabase.ps1
+* The script ```Test-AESampleData.ps1``` will import the test data.
+
+* It does the following steps:
+
+```
+$Database = "ElectoralAnalysisTest"
+
+.\Initialize-AEDatabase.ps1 -Database $Database -DeleteExisting -Confirm:$false
+
+# NT 2016
+
+.\Import-AESenateTicket.ps1 -Database $Database -Election "2016 Federal" -FilePath "..\SampleData\SenateFirstPrefsByStateByVoteTypeDownload-20499.csv"
+
+.\Import-AESenateVotes.ps1 -Database $Database -Election "2016 Federal" -State "NT" -FilePath "..\SampleData\aec-senate-formalpreferences-20499-NT.csv"
+
+.\Invoke-AETransformData.ps1 -Database $Database
+
+.\Import-AERepresentativesTicket.ps1 -Database $Database -Election "2016 Federal" -FilePath "..\SampleData\HouseCandidatesDownload-20499.csv"
+
+.\Import-AERepresentativesVotes.ps1 -Database $Database -Election "2016 Federal" -State "NT" -FilePath "..\SampleData\HouseStateFirstPrefsByPollingPlaceDownload-20499-NT.csv"
+
+.\Invoke-AETransformData.ps1 -Database $Database
+
+# NT 2013
+
+.\Import-AESenateTicket.ps1 -Database $Database -Election "2013 Federal" -FilePath "..\SampleData\SenateFirstPrefsByStateByVoteTypeDownload-17496.csv"
+
+.\Import-AESenateVotesLegacy.ps1 -Database $Database -Election "2013 Federal" -State "NT" -FilePath "..\SampleData\SenateStateFirstPrefsByPollingPlaceDownload-17496-NT.csv"
+
+.\Import-AERepresentativesTicket.ps1 -Database $Database -Election "2013 Federal" -FilePath "..\SampleData\HouseCandidatesDownload-17496.csv"
+
+.\Import-AERepresentativesVotes.ps1 -Database $Database -Election "2013 Federal" -State "NT" -FilePath "..\SampleData\HouseStateFirstPrefsByPollingPlaceDownload-17496-NT.csv"
+
+.\Invoke-AETransformData.ps1 -Database $Database
+```
+
+Note that the 2013 Senate data requires the script Import-AESenateVotesLegacy.ps1 to import.
+
+The Invoke-AETransformData.ps1 script runs the ProcessImportedData.sql SQL procedure, to process any outstanding data; it can be run multiple times.
+
+
+The scripts
+-----------
+
+* Initialize-AEDatabase.ps1
   - This will create a database 'ElectoralAnalysis'
   - Then will run ElectoralAnalysisSchema.sql to create the needed tables
 
-* Edit the parameters and run: Import-AESenateTicket.ps1
+* Import-AESenateTicket.ps1
   - This will load the raw ticket information
   
-* Edit the parameters and run: Import-AESenateVotes.ps1
+* Import-AESenateVotes.ps1
   - Run for each data file you want to import
   - This will load the raw ticket information
 
-* In SQL Management Studio, run: ProcessImportedData.sql
-  - Run one query at a time, to check for any issues
-  - You may need to load additional party names; there is a commented out bit of SQL that will generate some basic code that you need to then fill in with the key & short name.
+For a large data file, you may need to split into smaller input files for loading.
+
+You can use the Git Bash tool 'split' for this, e.g.
+
+```$ split aec-senate-formalpreferences-24310-QLD.csv split-senate-24310-QLD -l 1000000 -a 3 -d --additional-suffix=.csv```
+
+You then need to copy the header row, with column names, to each file (so it can be loaded as csv)
+  
+* Invoke-AETransformData
+  - Will run: ProcessImportedData.sql
+  - Can also run one query at a time in SQL Management Studio, to check for any issues
+  - You will need to load additional party names; there is a commented out bit of SQL that will generate some basic code that you need to then fill in with the key & short name.
   - Warning: some of the queries may take 5=10 minutes+ to run.
 
   - The Raw and Staging tables have a 'Processed' flag. You can load multiple sets of data, and re-run the scripts, which will only process new items.
@@ -75,9 +129,5 @@ The pivot table support in Excel is much better, and you can then pivot on diffe
   
 To do / roadmap
 ---------------
-
-* Script to import past elections (different format), for baseline comparison
-
-* Script to import Represenatives data, for comparison
 
 
