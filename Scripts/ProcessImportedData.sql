@@ -1,10 +1,10 @@
 /*
 SELECT TOP 100 * FROM RawSenateFirstPreferences
-SELECT TOP 100 * FROM RawSenateFormalPreferences
+SELECT TOP 100 * FROM RawSenateFormalPreferences2019
 SELECT TOP 100 * FROM RawSenateFirstPreferencesLegacy
 
 UPDATE RawSenateFirstPreferences SET Processed = 0;
-UPDATE RawSenateFormalPreferences SET Processed = 0;
+UPDATE RawSenateFormalPreferences2019 SET Processed = 0;
 */
 
 /*
@@ -736,6 +736,10 @@ SET Processed = 1
 WHERE Processed = 0;
 
 UPDATE RawSenateFormalPreferences2016 
+SET Processed = 1
+WHERE Processed = 0;
+
+UPDATE RawSenateFormalPreferences2019 
 SET Processed = 1
 WHERE Processed = 0;
 
