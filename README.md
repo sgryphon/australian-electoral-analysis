@@ -106,14 +106,16 @@ Running for different states
 	- House of Reps ticket: HouseCandidatesDownload-24310.csv
 	- Senate ticket: SenateFirstPrefsByStateByVoteTypeDownload-24310.csv
 
+* Use ```Import-AERepresentativesTicket.ps1``` and ```Import-AESenateTicket.ps1``` to import the ticket data (if not already there; the ticket data covers all states and only needs to be imported once).
+
 * You will then need the state vote data:
 	- House of Reps votes: HouseStateFirstPrefsByPollingPlaceDownload-24310-[STATE].csv
-	- Senate votes: aec-senate-formalpreferences-20499-[STATE].csv
+	- Senate votes: aec-senate-formalpreferences-20499-[STATE].zip
+
+* Use ```Import-AERepresentativesVotes.ps1``` to import the House data. This is smaller than the Senate data, so easy to import.
 
 * The Senate votes download is a ZIP file, that needs to be expanded.
-	
-  - SenateFirstPrefsByStateByVoteTypeDownload-20499.csv (contains all parties and candidates, in ticket order)
-  - aec-senate-formalpreferences-20499-[STATE].csv (contains Senate voting data for each state)
+	- aec-senate-formalpreferences-20499-[STATE].csv
 
 * The Senate data file is quite large, and for most states it will need to be split into files for processing.
 
@@ -132,12 +134,19 @@ cat first-senate-24310-QLD.csv split-senate-24310-QLD0012csv > data-senate-24301
 ...
 ```
 
-* Use ```Import-AESenateVotesYYYY``` to import all of the data files before running ```Invoke-AETransformData```, as the processing sums up the total number of each type of vote.
+* Use ```Import-AESenateVotesYYYY``` to import all of the Senate data files. Import all of the data files before running the processing.
 
 * Warning, some of the scripts for the larger states will take a long time to run, 10's of minutes, or even longer.
 
-* If the ```Invoke-AETransformData``` script times out, then you can load the script in SQL Analyser and run it manually. Generally you can clear out the Staging tables if you need to restart. Rows marked Processed (Raw and Staging) are ignored.
-    
+* The Invoke PowerShell script works okay for the small NT data in the sample folder, but times out on larger states.
+
+* For other states, run the ```ProcessImportedData.sql``` direct in SQL Server Management Studio; it can take a long time to process.
+
+* If there are any issues, you can check the ElectionDimesion table for the new election IDs, delete the corresponding PreferenceDimension and TicketDimension tables, truncate the Staging tables, and re-run the script one query at a time.
+
+* Row marked Processed (in the Raw and Staging tables) are already processed and ignored. The Staging tables are not important and can be truncated.
+
+
 To do / roadmap
 ---------------
 
