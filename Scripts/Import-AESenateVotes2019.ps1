@@ -100,11 +100,13 @@ foreach ($row in $data) {
 	}
 	
 	$preferences = ""
+	$columnIndex = 0
 	foreach ($columnName in $preferenceColumnNames) {
-		if ($preferences -ne "") {
+		if ($columnIndex -gt 0) {
 			$preferences += ","
 		}
 		$preferences += $row.$columnName
+		$columnIndex++
 	}
 	
 	if ($batchDataSelect) { 
